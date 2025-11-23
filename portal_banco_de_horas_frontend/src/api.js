@@ -1,7 +1,7 @@
 // src/api.js
 import axios from 'axios';
 
-const API_URL = 'https://https://portal-backend-dtf6.onrender.com';
+const API_URL = 'https://portal-backend-dtf6.onrender.com';
 const TOKEN_KEY = 'auth_token_14reg';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
