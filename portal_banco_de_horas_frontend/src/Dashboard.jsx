@@ -26,7 +26,7 @@ const toDays = (hours) => (hours / 8).toFixed(2); // 8 horas = 1 dia
 // --- Componentes UI (Reutilizados) ---
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-neutral-900/50 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>
+  <div className={`bg-neutral-900 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>
     {children}
   </div>
 );

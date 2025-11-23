@@ -48,7 +48,7 @@ const AdminChallenges = () => {
   return (
     <div className="space-y-6">
         {/* FORM DE CRIAÇÃO (Igual a antes) */}
-        <div className="bg-neutral-900/50 border border-emerald-900/40 rounded-2xl p-5 mt-4">
+        <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5 mt-4">
         <div className="flex items-center gap-2 mb-4">
             <Swords className="text-emerald-400" />
             <h2 className="text-emerald-100 font-semibold">Criar Novo Desafio</h2>
@@ -80,7 +80,7 @@ const AdminChallenges = () => {
         </div>
 
         {/* LISTA COM BOTÃO DE EXCLUIR */}
-        <div className="bg-neutral-900/50 border border-emerald-900/40 rounded-2xl p-5">
+        <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5">
             <h3 className="text-emerald-100 font-semibold mb-4">Desafios em Andamento</h3>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-neutral-300">

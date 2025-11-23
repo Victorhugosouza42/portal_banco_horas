@@ -57,7 +57,7 @@ const AdminUsers = () => {
   };
 
   return (
-    <div className="bg-neutral-900/50 border border-emerald-900/40 rounded-2xl p-5 mt-4">
+    <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5 mt-4">
       <div className="flex items-center gap-2 mb-4">
         <Users className="text-emerald-400" />
         <h2 className="text-emerald-100 font-semibold">Gestão de Usuários</h2>

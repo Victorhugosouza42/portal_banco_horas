@@ -10,7 +10,7 @@ const AdminChallengeReport = () => {
     }, []);
 
     return (
-        <div className="bg-neutral-900/50 border border-emerald-900/40 rounded-2xl p-5 mt-4">
+        <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5 mt-4">
             <h2 className="text-emerald-100 font-semibold mb-4">Relatório de Desafios (Status Geral)</h2>
             <table className="w-full text-sm text-left text-neutral-300">
                 <thead className="text-emerald-200 border-b border-emerald-800">

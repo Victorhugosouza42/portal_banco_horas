@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Swords, Users, Upload, CheckCircle, Clock } from "lucide-react";
 import { challenge, user } from './api.js';
 
-const Card = ({ children, className = "" }) => <div className={`bg-neutral-900/50 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>{children}</div>;
+const Card = ({ children, className = "" }) => <div className={`bg-neutral-900 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>{children}</div>;
 const Button = ({ children, onClick, variant = "primary", disabled, className = "" }) => {
     const colors = {
         primary: "bg-emerald-600 hover:bg-emerald-700 text-white",

@@ -15,7 +15,7 @@ const brand = {
 // --- Componentes UI ---
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-neutral-900/50 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>
+  <div className={`bg-neutral-900 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>
     {children}
   </div>
 );
