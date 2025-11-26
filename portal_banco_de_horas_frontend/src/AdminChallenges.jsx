@@ -1,115 +1,96 @@
 // src/AdminChallenges.jsx
 import React, { useState, useEffect } from 'react';
-import { Swords, Plus, Trash2 } from "lucide-react";
-import { admin, challenge } from './api';
+import { Swords, Plus, Trash2, X } from "lucide-react";
+import { admin, challenge, getPublicRoles } from './api'; // Importar getPublicRoles
 
 const AdminChallenges = () => {
-  const [form, setForm] = useState({ title: "", description: "", points: 10, allowed_roles: "", due_at: "" });
+  const [form, setForm] = useState({ title: "", description: "", points: 10, allowed_roles: [], due_at: "" });
   const [existingChallenges, setExistingChallenges] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]); // Cargos vindos do DB
   const [loading, setLoading] = useState(false);
 
-  const fetchChallenges = async () => {
+  const fetchData = async () => {
       try {
-          const res = await challenge.getAll();
-          setExistingChallenges(res.data);
+          const [cRes, rRes] = await Promise.all([challenge.getAll(), getPublicRoles()]);
+          setExistingChallenges(cRes.data);
+          setAvailableRoles(rRes.data);
       } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { fetchChallenges(); }, []);
+  useEffect(() => { fetchData(); }, []);
+
+  const addRole = (role) => {
+    if (!role) return;
+    if (!form.allowed_roles.includes(role)) setForm({ ...form, allowed_roles: [...form.allowed_roles, role] });
+  };
+
+  const removeRole = (r) => setForm({ ...form, allowed_roles: form.allowed_roles.filter(x => x !== r) });
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault(); setLoading(true);
     try {
-      const payload = { 
-        ...form, 
-        points: parseInt(form.points),
-        allowed_roles: form.allowed_roles.length ? form.allowed_roles.split(',').map(r=>r.trim()) : [],
-        due_at: form.due_at ? new Date(form.due_at).toISOString() : null 
-      };
-      
-      await admin.createChallenge(payload);
-      alert("Desafio criado com sucesso!");
-      setForm({ title: "", description: "", points: 10, allowed_roles: "", due_at: "" });
-      fetchChallenges();
-    } catch (err) { alert("Erro ao criar desafio."); } 
-    finally { setLoading(false); }
+      const payload = { ...form, points: +form.points, allowed_roles: form.allowed_roles, due_at: form.due_at || null };
+      await admin.createChallenge(payload); alert("Criado!"); setForm({ title: "", description: "", points: 10, allowed_roles: [], due_at: "" }); fetchData();
+    } catch (err) { alert("Erro."); } finally { setLoading(false); }
   };
 
-  // NOVA FUNÇÃO: EXCLUIR DESAFIO
-  const handleDelete = async (id) => {
-      if (!confirm("Tem certeza que deseja excluir este desafio?")) return;
-      try {
-          await admin.deleteChallenge(id);
-          fetchChallenges(); // Atualiza a lista
-      } catch (e) { alert("Erro ao excluir."); }
-  };
+  const handleDelete = async (id) => { if(confirm("Excluir?")) { await admin.deleteChallenge(id); fetchData(); } };
 
   return (
     <div className="space-y-6">
-        {/* FORM DE CRIAÇÃO (Igual a antes) */}
-        <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5 mt-4">
-        <div className="flex items-center gap-2 mb-4">
-            <Swords className="text-emerald-400" />
-            <h2 className="text-emerald-100 font-semibold">Criar Novo Desafio</h2>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-            <input placeholder="Título do Desafio" required className="bg-neutral-950 border border-emerald-800 p-2 rounded text-white"
-                value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
+        <div className="theme-card mt-4">
+            <div className="flex items-center gap-2 mb-4">
+                <Swords className="text-emerald-600 dark:text-emerald-400" />
+                <h2 className="text-emerald-900 dark:text-emerald-100 font-semibold text-lg">Criar Novo Desafio</h2>
+            </div>
             
-            <input type="number" placeholder="Pontos" required className="bg-neutral-950 border border-emerald-800 p-2 rounded text-white"
-                value={form.points} onChange={e=>setForm({...form, points: e.target.value})} />
-            </div>
-            <textarea placeholder="Descrição completa..." required className="w-full bg-neutral-950 border border-emerald-800 p-2 rounded text-white h-20"
-                value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
-            <div className="grid md:grid-cols-2 gap-4">
-            <input placeholder="Cargos permitidos (sep. vírgula)" className="bg-neutral-950 border border-emerald-800 p-2 rounded text-white"
-                value={form.allowed_roles} onChange={e=>setForm({...form, allowed_roles: e.target.value})} />
-            <div className="flex flex-col">
-                <label className="text-xs text-neutral-400 mb-1">Prazo Limite (Opcional)</label>
-                <input type="datetime-local" className="bg-neutral-950 border border-emerald-800 p-2 rounded text-white text-sm"
-                value={form.due_at} onChange={e=>setForm({...form, due_at: e.target.value})} />
-            </div>
-            </div>
-            <button disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded flex items-center gap-2 w-full justify-center">
-            <Plus size={18}/> {loading ? "Criando..." : "Lançar Desafio"}
-            </button>
-        </form>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Título</label><input placeholder="Ex: Organização" required className="theme-input" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Pontos</label><input type="number" placeholder="10" required className="theme-input" value={form.points} onChange={e=>setForm({...form, points: e.target.value})} /></div>
+                </div>
+                <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Descrição</label><textarea placeholder="Detalhes..." required className="theme-input h-24 resize-none" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} /></div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Público Alvo</label>
+                        <select className="theme-input w-full cursor-pointer mb-2" value="" onChange={(e) => addRole(e.target.value)}>
+                            <option value="" disabled>Adicionar Cargo...</option>
+                            {availableRoles.map(role => <option key={role.id} value={role.name}>{role.name}</option>)}
+                        </select>
+                        <div className="flex flex-wrap gap-2 min-h-[30px]">
+                            {form.allowed_roles.length === 0 && <span className="text-xs text-slate-400 italic py-1">Todos podem ver</span>}
+                            {form.allowed_roles.map(role => (
+                                <span key={role} className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-md border border-emerald-200 dark:border-emerald-800">
+                                    {role} <button type="button" onClick={() => removeRole(role)} className="hover:text-red-500"><X size={14} /></button>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Prazo (Opcional)</label>
+                        <input type="datetime-local" className="theme-input" value={form.due_at} onChange={e=>setForm({...form, due_at: e.target.value})} />
+                    </div>
+                </div>
+                <button disabled={loading} className="btn-primary w-full justify-center mt-4"><Plus size={18}/> {loading ? "..." : "Lançar"}</button>
+            </form>
         </div>
 
-        {/* LISTA COM BOTÃO DE EXCLUIR */}
-        <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5">
-            <h3 className="text-emerald-100 font-semibold mb-4">Desafios em Andamento</h3>
+        <div className="theme-card">
+            <h3 className="text-emerald-900 dark:text-emerald-100 font-semibold mb-4">Desafios em Andamento</h3>
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-neutral-300">
-                    <thead className="text-emerald-200 border-b border-emerald-800">
-                        <tr>
-                            <th className="p-2">Título</th>
-                            <th>Pontos</th>
-                            <th>Prazo</th>
-                            <th>Público</th>
-                            <th>Ação</th> {/* Nova Coluna */}
-                        </tr>
-                    </thead>
+                <table className="w-full text-left">
+                    <thead><tr><th className="theme-table-head">Título</th><th className="theme-table-head">Pontos</th><th className="theme-table-head">Prazo</th><th className="theme-table-head">Público</th><th className="theme-table-head">Ação</th></tr></thead>
                     <tbody>
                         {existingChallenges.map(c => (
-                            <tr key={c.id} className="border-b border-emerald-900/20 hover:bg-neutral-800/30">
-                                <td className="p-2 font-medium">{c.title}</td>
-                                <td>{c.points}</td>
-                                <td>{c.due_at ? new Date(c.due_at).toLocaleDateString() : 'Sem prazo'}</td>
-                                <td>{c.allowed_roles?.join(', ') || 'Todos'}</td>
-                                <td>
-                                    <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-400 p-1" title="Excluir">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </td>
+                            <tr key={c.id} className="theme-table-row">
+                                <td className="theme-table-cell font-bold">{c.title}</td>
+                                <td className="theme-table-cell">{c.points}</td>
+                                <td className="theme-table-cell">{c.due_at ? new Date(c.due_at).toLocaleDateString() : '-'}</td>
+                                <td className="theme-table-cell text-xs">{c.allowed_roles?.join(', ') || 'Todos'}</td>
+                                <td className="theme-table-cell"><button onClick={() => handleDelete(c.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"><Trash2 size={16} /></button></td>
                             </tr>
                         ))}
-                        {existingChallenges.length === 0 && (
-                            <tr><td colSpan="5" className="p-4 text-center text-neutral-500">Nenhum desafio criado.</td></tr>
-                        )}
                     </tbody>
                 </table>
             </div>
@@ -117,5 +98,4 @@ const AdminChallenges = () => {
     </div>
   );
 };
-
 export default AdminChallenges;

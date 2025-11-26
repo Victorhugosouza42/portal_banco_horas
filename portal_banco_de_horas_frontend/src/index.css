@@ -1,3 +1,81 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  /* --- ESTRUTURA PRINCIPAL --- */
+  
+  /* Fundo da página: Verde muito claro no Light / Verde muito escuro no Dark */
+  .theme-page {
+    @apply min-h-screen w-full bg-emerald-50 dark:bg-[#0b1f17] text-slate-800 dark:text-emerald-100 transition-colors duration-300 font-sans;
+  }
+
+  /* Cartões: Branco no Light / Preto Suave no Dark */
+  .theme-card {
+    @apply bg-white dark:bg-neutral-900 border border-slate-200 dark:border-emerald-900/40 rounded-2xl shadow-sm dark:shadow-xl p-6 transition-all duration-300;
+  }
+
+  /* Inputs: Campos de texto adaptáveis */
+  .theme-input {
+    @apply w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-emerald-800 text-slate-800 dark:text-emerald-100 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-colors duration-300;
+  }
+
+  /* --- BOTÕES --- */
+  
+  .btn {
+    @apply px-4 py-2 rounded-xl font-medium transition transform active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply btn bg-emerald-600 hover:bg-emerald-700 dark:bg-[#0ea567] dark:hover:bg-[#0b7d4f] text-white shadow-md;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent border border-slate-300 dark:border-emerald-700 text-slate-600 dark:text-emerald-300 hover:bg-slate-100 dark:hover:bg-emerald-900/30;
+  }
+
+  .btn-subtle {
+    @apply btn bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900/50;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 border border-red-200 dark:border-red-800;
+  }
+
+  .btn-success {
+    @apply btn bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900 border border-green-200 dark:border-green-800;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400;
+  }
+
+  /* --- TAGS & BADGES --- */
+  
+  .tag {
+    @apply px-2.5 py-0.5 rounded-md text-xs font-bold border transition-colors;
+  }
+  
+  .tag-default { @apply tag bg-slate-100 dark:bg-emerald-900/30 text-slate-600 dark:text-emerald-300 border-slate-200 dark:border-emerald-800; }
+  .tag-success { @apply tag bg-emerald-50 dark:bg-green-900/30 text-emerald-700 dark:text-green-300 border-emerald-200 dark:border-green-800; }
+  .tag-danger  { @apply tag bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800; }
+  .tag-pending { @apply tag bg-amber-50 dark:bg-yellow-900/20 text-amber-700 dark:text-yellow-500 border-amber-200 dark:border-yellow-800; }
+
+  /* --- TABELAS --- */
+  
+  .theme-table-head {
+    @apply text-left text-xs font-bold text-slate-500 dark:text-emerald-500 uppercase tracking-wider border-b border-slate-200 dark:border-emerald-900/50 pb-3;
+  }
+  
+  .theme-table-row {
+    @apply border-b border-slate-100 dark:border-emerald-900/20 hover:bg-slate-50 dark:hover:bg-emerald-900/10 transition-colors;
+  }
+  
+  .theme-table-cell {
+    @apply py-3 px-2 text-sm text-slate-700 dark:text-slate-300;
+  }
+
+  /* --- TEXTOS --- */
+  .text-title { @apply text-slate-900 dark:text-emerald-50 font-bold; }
+  .text-subtitle { @apply text-slate-500 dark:text-emerald-400/80; }
+}

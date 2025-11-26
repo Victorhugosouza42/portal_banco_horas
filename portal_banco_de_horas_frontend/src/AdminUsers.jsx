@@ -1,118 +1,80 @@
 // src/AdminUsers.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, Edit2, Save, X, KeyRound, Trash2 } from "lucide-react";
-import { admin } from './api';
+import { Users, Edit2, Save, X, KeyRound, Trash2, Eye } from "lucide-react";
+import { admin, getPublicRoles } from './api'; // Importar getPublicRoles
+import AdminUserDetails from './AdminUserDetails.jsx';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
+  const [rolesList, setRolesList] = useState([]); // Estado para os cargos
+  const [selectedUser, setSelectedUser] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const fetchUsers = async () => {
+  // Busca Utilizadores E Cargos
+  const fetchData = async () => {
       try {
-        const res = await admin.getAllUsers();
-        setUsers(res.data);
-      } catch (e) { console.error("Erro ao buscar usuários", e); }
+        const [uRes, rRes] = await Promise.all([admin.getAllUsers(), getPublicRoles()]);
+        setUsers(uRes.data);
+        setRolesList(rRes.data);
+      } catch (e) { console.error("Erro ao buscar dados", e); }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const startEdit = (user) => {
-    setEditingId(user.id);
-    setEditForm({ name: user.name, role: user.role, is_admin: user.is_admin });
-  };
-
+  const startEdit = (user) => { setEditingId(user.id); setEditForm({ name: user.name, role: user.role, is_admin: user.is_admin }); };
   const handleSave = async () => {
     setLoading(true);
-    try {
-      await admin.updateUser(editingId, editForm);
-      setEditingId(null);
-      fetchUsers();
-    } catch (e) { alert("Erro ao atualizar usuário."); } 
+    try { await admin.updateUser(editingId, editForm); setEditingId(null); fetchData(); } catch (e) { alert("Erro ao atualizar."); } 
     finally { setLoading(false); }
   };
+  const handleDelete = async (uid) => { if(confirm("ATENÇÃO: Demitir usuário?")) { await admin.deleteUser(uid); fetchData(); } };
+  const handleReset = async (uid) => { const p=prompt("Nova senha:"); if(p) await admin.resetPassword(uid, p); };
 
-  const handleResetPassword = async (uid) => {
-      const newPass = prompt("Nova senha (min 6 chars):");
-      if (newPass && newPass.length >= 6) {
-          try {
-              await admin.resetPassword(uid, newPass);
-              alert("Senha alterada!");
-          } catch (e) { alert("Erro ao alterar senha."); }
-      }
-  };
-
-  // NOVA FUNÇÃO: EXCLUIR USUÁRIO
-  const handleDelete = async (uid) => {
-      if (!confirm("ATENÇÃO: Tem certeza que deseja DEMITIR este usuário? Esta ação não pode ser desfeita e apagará todo o histórico dele.")) return;
-      
-      try {
-          await admin.deleteUser(uid);
-          fetchUsers(); // Remove da lista
-          alert("Usuário excluído com sucesso.");
-      } catch (e) { 
-          alert("Erro ao excluir usuário. Verifique se você é Admin."); 
-      }
-  };
+  if (selectedUser) return <AdminUserDetails user={selectedUser} onBack={() => setSelectedUser(null)} />;
 
   return (
-    <div className="bg-neutral-900 border border-emerald-900/40 rounded-2xl p-5 mt-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Users className="text-emerald-400" />
-        <h2 className="text-emerald-100 font-semibold">Gestão de Usuários</h2>
-      </div>
-
+    <div className="theme-card mt-4">
+      <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white flex gap-2"><Users/> Gestão de Usuários</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-emerald-200 border-b border-emerald-800">
-            <tr>
-              <th className="py-2">Nome</th>
-              <th>Email</th>
-              <th>Cargo</th>
-              <th>Acesso</th>
-              <th>Ações</th>
-            </tr>
+        <table className="w-full text-left">
+          <thead>
+            <tr><th className="theme-table-head">Nome</th><th className="theme-table-head">Email</th><th className="theme-table-head">Cargo</th><th className="theme-table-head">Acesso</th><th className="theme-table-head">Ações</th></tr>
           </thead>
-          <tbody className="text-neutral-300">
+          <tbody>
             {users.map(u => (
-              <tr key={u.id} className="border-b border-emerald-900/30 hover:bg-neutral-800/30">
-                <td className="py-3">
-                  {editingId === u.id ? (
-                    <input className="bg-neutral-950 border border-emerald-700 rounded p-1 text-white w-full" 
-                        value={editForm.name} onChange={e=>setEditForm({...editForm, name: e.target.value})} />
-                  ) : u.name}
+              <tr key={u.id} className="theme-table-row group">
+                <td className="theme-table-cell">
+                  {editingId === u.id ? <input className="theme-input !py-1" value={editForm.name} onChange={e=>setEditForm({...editForm, name:e.target.value})}/> 
+                  : <button onClick={() => setSelectedUser(u)} className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-2">{u.name} <Eye size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400"/></button>}
                 </td>
-                <td>{u.email || "N/A"}</td>
-                <td>
+                <td className="theme-table-cell">{u.email}</td>
+                <td className="theme-table-cell">
                   {editingId === u.id ? (
-                    <select className="bg-neutral-950 border border-emerald-700 rounded p-1 text-white"
-                        value={editForm.role} onChange={e=>setEditForm({...editForm, role: e.target.value})}>
-                      <option>Analista</option><option>Técnico</option><option>Assistente</option><option>Coordenação</option>
+                    // --- SELECT COM CARGOS DO DB ---
+                    <select className="theme-input !py-1" value={editForm.role} onChange={e=>setEditForm({...editForm, role:e.target.value})}>
+                        {rolesList.map(role => (
+                            <option key={role.id} value={role.name}>{role.name}</option>
+                        ))}
                     </select>
                   ) : u.role}
                 </td>
-                <td>
-                  {editingId === u.id ? (
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={editForm.is_admin} onChange={e=>setEditForm({...editForm, is_admin: e.target.checked})} />
-                      <span>Admin</span>
-                    </label>
-                  ) : (u.is_admin ? <span className="text-emerald-400 font-bold">Admin</span> : "User")}
+                <td className="theme-table-cell">
+                  {editingId === u.id ? <input type="checkbox" checked={editForm.is_admin} onChange={e=>setEditForm({...editForm, is_admin:e.target.checked})}/> : (u.is_admin?"Admin":"User")}
                 </td>
-                <td>
+                <td className="theme-table-cell flex gap-2">
                   {editingId === u.id ? (
-                    <div className="flex gap-2">
-                      <button onClick={handleSave} disabled={loading} className="text-green-400 hover:text-green-300"><Save size={18}/></button>
-                      <button onClick={()=>setEditingId(null)} className="text-neutral-400 hover:text-white"><X size={18}/></button>
-                    </div>
+                    <>
+                        <button onClick={handleSave} disabled={loading} className="text-green-600"><Save size={18}/></button>
+                        <button onClick={()=>setEditingId(null)} className="text-red-500"><X size={18}/></button>
+                    </>
                   ) : (
-                    <div className="flex gap-3">
-                        <button onClick={()=>startEdit(u)} className="text-emerald-400 hover:text-emerald-200" title="Editar"><Edit2 size={18}/></button>
-                        <button onClick={() => handleResetPassword(u.id)} className="text-yellow-500 hover:text-yellow-300" title="Senha"><KeyRound size={18}/></button>
-                        {/* BOTÃO DE EXCLUIR */}
-                        <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-300" title="Demitir / Excluir"><Trash2 size={18}/></button>
-                    </div>
+                    <>
+                        <button onClick={()=>startEdit(u)} className="text-blue-500 btn-icon"><Edit2 size={18}/></button>
+                        <button onClick={()=>handleReset(u.id)} className="text-amber-500 btn-icon"><KeyRound size={18}/></button>
+                        <button onClick={()=>handleDelete(u.id)} className="text-red-500 btn-icon"><Trash2 size={18}/></button>
+                    </>
                   )}
                 </td>
               </tr>
@@ -123,5 +85,4 @@ const AdminUsers = () => {
     </div>
   );
 };
-
 export default AdminUsers;

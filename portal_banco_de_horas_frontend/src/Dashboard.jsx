@@ -1,400 +1,174 @@
 // src/Dashboard.jsx
-// (Versão Final Completa com Todas as Abas Administrativas)
-
 import React, { useState, useEffect } from 'react';
-import { motion } from "framer-motion";
-import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Download, Upload, Settings, ShieldCheck, BarChart3 } from "lucide-react";
-import { user, challenge, admin } from './api.js';
+import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3 } from "lucide-react";
+import { user, admin } from './api.js';
 
-// Importação dos Componentes Específicos
+// Componentes
 import ChallengesManager from './ChallengesManager.jsx'; 
 import AdminValidation from './AdminValidation.jsx'; 
 import AdminUsers from './AdminUsers.jsx';
 import AdminChallenges from './AdminChallenges.jsx';
-import AdminChallengeReport from './AdminChallengeReport.jsx'; // O novo relatório
+import AdminChallengeReport from './AdminChallengeReport.jsx';
+import AdminSettings from './AdminSettings.jsx'; // <--- NOVO
 
-// --- Paleta e Branding ---
-const brand = {
-  name: "14 REGIONAL EXTREMO SUL",
-  primary: "#0ea567", // verde principal
-  primaryDark: "#0b7d4f",
-};
-
-// --- Utilidades ---
-const toDays = (hours) => (hours / 8).toFixed(2); // 8 horas = 1 dia
-
-// --- Componentes UI (Reutilizados) ---
-
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-neutral-900 border border-emerald-900/40 rounded-2xl shadow-xl p-5 ${className}`}>
-    {children}
-  </div>
+// UI Components
+const Card = ({ children, className="" }) => <div className={`theme-card ${className}`}>{children}</div>;
+const Tag = ({ children, variant="default" }) => <span className={`tag tag-${variant}`}>{children}</span>;
+const Button = ({ children, onClick, variant="primary", disabled, className="" }) => (
+  <button onClick={onClick} disabled={disabled} className={`btn-${variant} ${className}`}>{children}</button>
 );
 
-const Button = ({ children, onClick, variant = "primary", disabled, type = "button", className = "" }) => {
-  const base = "px-4 py-2 rounded-xl font-medium transition transform active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm";
-  const variants = {
-    primary: `bg-[#0ea567] hover:bg-[#0b7d4f] text-white`,
-    ghost: "bg-transparent border border-emerald-700 text-emerald-300 hover:bg-emerald-900/30",
-    subtle: "bg-emerald-900/30 text-emerald-200 hover:bg-emerald-900/50",
-    danger: "bg-red-600/90 text-white hover:bg-red-600",
-    success: "bg-green-700/90 text-white hover:bg-green-600",
-  };
-  return (
-    <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>
-      {children}
-    </button>
-  );
-};
-
-const Tag = ({ children, variant="default" }) => {
-  const variants = {
-    default: "bg-emerald-800/50 text-emerald-200 border border-emerald-700",
-    danger: "bg-red-800/50 text-red-200 border border-red-700",
-    success: "bg-green-800/50 text-green-200 border border-green-700",
-    pending: "bg-neutral-800/50 text-neutral-300 border border-neutral-700",
-  }
-  return (
-    <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${variants[variant]}`}>
-      {children}
-    </span>
-  );
-};
-
 const Stat = ({ icon: Icon, label, value, sub }) => (
-  <Card>
-    <div className="flex items-center gap-4">
-      <div className="p-3 rounded-xl bg-emerald-900/40 border border-emerald-800"><Icon className="text-emerald-300" size={24} /></div>
-      <div>
-        <div className="text-neutral-300 text-sm">{label}</div>
-        <div className="text-2xl font-bold text-emerald-100">{value}</div>
-        {sub && <div className="text-xs text-neutral-400">{sub}</div>}
-      </div>
+  <Card className="!p-4 flex items-center gap-4">
+    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
+      <Icon size={24} />
+    </div>
+    <div>
+      <div className="text-slate-500 dark:text-neutral-400 text-xs font-bold uppercase tracking-wide">{label}</div>
+      <div className="text-2xl font-bold text-slate-800 dark:text-white">{value}</div>
+      {sub && <div className="text-xs text-slate-400 dark:text-neutral-500 mt-0.5">{sub}</div>}
     </div>
   </Card>
 );
 
-// --- Componentes de Dashboard Específicos ---
-
 function Header({ user, onLogout }) {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex items-center gap-3">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="p-2 rounded-xl bg-emerald-900/50 border border-emerald-800">
-          <Trophy className="text-emerald-400" />
-        </motion.div>
+    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 transition-all duration-300">
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-xl bg-white dark:bg-emerald-900/50 border border-slate-200 dark:border-emerald-800 shadow-sm transition-colors duration-300">
+          <Trophy className="text-emerald-600 dark:text-emerald-400" size={28} />
+        </div>
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: brand.primary }}>{brand.name}</h1>
-          <p className="text-neutral-300 text-sm">Portal Banco de Horas & Gamificação - Bem-vindo, {user.name || 'Servidor'}</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">
+            14ª REGIONAL <span className="font-normal text-slate-600 dark:text-emerald-200/80">- Teixeira de Freitas</span>
+          </h1>
+          <p className="text-slate-500 dark:text-neutral-400 text-sm transition-colors duration-300">
+            Portal Banco de Horas & Gamificação - Bem-vindo, <span className="font-semibold text-emerald-700 dark:text-emerald-300">{user.name || 'Servidor'}</span>
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <Tag>{user.role}{user.is_admin ? " • Admin" : ""}</Tag>
-        <Button variant="ghost" onClick={onLogout}><LogOut size={16} className="inline mr-2"/> Sair</Button>
+        <Tag variant={user.is_admin ? "success" : "default"}>{user.role}{user.is_admin ? " • Admin" : ""}</Tag>
+        <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-emerald-300 border border-slate-300 dark:border-emerald-800 hover:bg-slate-100 dark:hover:bg-emerald-900/30 transition-all duration-200">
+          Sair <LogOut size={16} />
+        </button>
       </div>
     </div>
   );
 }
 
-// --- Lógica de Negócio (Conversão de Pontos) ---
-
-function ConversionWidget({ currentUser, fetchProfile }) {
-  const [hoursToConvert, setHoursToConvert] = useState(1);
-  const [conversionRate, setConversionRate] = useState(10); 
-  const [message, setMessage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  
-  useEffect(() => {
-    const fetchRate = async () => {
-      try {
-        const response = await admin.getSettings();
-        setConversionRate(response.data.points_per_hour);
-      } catch (e) {
-        // Ignora
-      }
-    };
-    fetchRate(); 
-  }, []);
-
-
-  const cost = hoursToConvert * conversionRate;
-  const canConvert = currentUser.points >= cost && hoursToConvert > 0 && !loading;
-
-  const handleConvert = async () => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      await user.convertPoints(hoursToConvert);
-      await fetchProfile(); 
-      setMessage({ type: 'success', text: `Conversão de ${hoursToConvert}h realizada com sucesso!` });
-    } catch (e) {
-      const detail = e.response?.data?.detail || "Erro desconhecido na conversão.";
-      setMessage({ type: 'error', text: detail.replace("Exception: ", "") });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Card className="mt-4">
-      <h2 className="text-emerald-100 font-semibold mb-3">Converter Pontos em Horas</h2>
-      {message && (
-        <div className={`p-3 rounded-lg mb-3 text-sm ${message.type === 'success' ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
-          {message.text}
-        </div>
-      )}
-      <div className="flex flex-col md:flex-row gap-3 md:items-end">
-        <div>
-          <label className="text-sm text-neutral-300">Horas a adquirir</label>
-          <input type="number" min={1} value={hoursToConvert}
-                 onChange={(e)=>setHoursToConvert(Math.max(1, +e.target.value))}
-                 className="w-full bg-neutral-900 border border-emerald-800 text-emerald-100 p-3 rounded-xl" />
-        </div>
-        <div className="text-neutral-300">
-          Custo: <span className="font-semibold text-emerald-200">{cost} pts</span>
-          <span className="text-xs text-neutral-400 block">({conversionRate} pts = 1h)</span>
-        </div>
-        <Button 
-          onClick={handleConvert} 
-          disabled={!canConvert} 
-          className="w-full md:w-auto"
-          variant="success"
-        >
-          <Hourglass size={16} className="inline mr-2"/> {loading ? "Processando..." : "Converter"}
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-// --- Dashboard de Usuário (Não Admin) ---
-
 function UserDashboardContent({ currentUser, fetchProfile }) {
   const [req, setReq] = useState({ type: "gozo", hours: 4, reason: "" });
   const [requests, setRequests] = useState([]);
-  const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [rate, setRate] = useState(10);
+  const [convH, setConvH] = useState(1);
 
-  const fetchRequests = async () => {
-    try {
-      const response = await user.getRequests();
-      setRequests(response.data);
-    } catch (e) {
-      console.error("Erro ao buscar pedidos:", e);
-    }
-  };
-
-  useEffect(() => {
-    fetchRequests();
+  const fetchRequests = async () => { try { const r = await user.getRequests(); setRequests(r.data); } catch (e) {} };
+  useEffect(() => { 
+      fetchRequests(); 
+      admin.getSettings().then(r => setRate(r.data.points_per_hour)).catch(()=>{});
   }, []);
 
-  const handleRequestSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      await user.createRequest(req.type, req.hours, req.reason);
-      fetchRequests(); 
-      setReq({ type: "gozo", hours: 4, reason: "" }); 
-      setMessage({ type: 'success', text: "Solicitação enviada para aprovação!" });
-    } catch (e) {
-      const detail = e.response?.data?.detail || "Erro ao enviar solicitação.";
-      setMessage({ type: 'error', text: detail.replace("Exception: ", "") });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { await user.createRequest(req.type, req.hours, req.reason); fetchRequests(); setReq({ type: "gozo", hours: 4, reason: "" }); alert("Enviado!"); } catch (e) { alert("Erro."); } finally { setLoading(false); } };
+  const handleConvert = async () => { try { await user.convertPoints(convH); await fetchProfile(); alert("Convertido!"); } catch(e){alert("Erro");} };
 
   return (
-    <>
-      <ConversionWidget currentUser={currentUser} fetchProfile={fetchProfile} />
-      
-      {/* Solicitação de Folga / Concessão */}
-      <Card className="mt-4">
-        <h2 className="text-emerald-100 font-semibold mb-3">Solicitar Folga / Concessão</h2>
-        {message && (
-          <div className={`p-3 rounded-lg mb-3 text-sm ${message.type === 'success' ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
-            {message.text}
-          </div>
-        )}
-        <form onSubmit={handleRequestSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-sm text-neutral-300">Tipo</label>
-              <select value={req.type} onChange={(e)=>setReq((r)=>({...r, type:e.target.value}))}
-                      className="w-full bg-neutral-900 border border-emerald-800 text-emerald-100 p-3 rounded-xl">
-                <option value="gozo">Gozo (gastar horas)</option>
-                <option value="concessao">Concessão (acrescentar horas)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm text-neutral-300">Horas</label>
-              <input type="number" min={1} value={req.hours}
-                     onChange={(e)=>setReq((r)=>({...r, hours: Math.max(1, +e.target.value)}))}
-                     className="w-full bg-neutral-900 border border-emerald-800 text-emerald-100 p-3 rounded-xl" required />
-              <div className="text-xs text-neutral-400 mt-1">Equivale a {toDays(req.hours)} dia(s)</div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm text-neutral-300">Motivo</label>
-              <input value={req.reason} onChange={(e)=>setReq((r)=>({...r, reason:e.target.value}))}
-                     className="w-full bg-neutral-900 border border-emerald-800 text-emerald-100 p-3 rounded-xl" placeholder="Descreva o motivo" required/>
-            </div>
-          </div>
-          <Button type="submit" disabled={loading} className="mt-3">
-            <FileText size={16} className="inline mr-2"/> {loading ? "Enviando..." : "Enviar Solicitação"}
-          </Button>
-        </form>
-      </Card>
-
-      {/* Minhas Solicitações */}
-      <Card className="mt-4">
-        <h2 className="text-emerald-100 font-semibold mb-3">Minhas Solicitações</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-emerald-200 text-left border-b border-emerald-700/50">
-                <th className="py-2 px-2">Data</th>
-                <th className="py-2 px-2">Tipo</th>
-                <th className="py-2 px-2">Horas</th>
-                <th className="py-2 px-2">Motivo</th>
-                <th className="py-2 px-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.length === 0 && (
-                <tr><td colSpan="5" className="py-4 text-center text-neutral-400">Nenhum pedido encontrado.</td></tr>
-              )}
-              {requests.map((r)=> (
-                <tr key={r.id} className="border-t border-emerald-900/40 text-neutral-300 hover:bg-neutral-800/30">
-                  <td className="py-2 px-2 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</td>
-                  <td className="py-2 px-2">{r.type}</td>
-                  <td className="py-2 px-2">{r.hours} h ({toDays(r.hours)} d)</td>
-                  <td className="py-2 px-2 max-w-xs truncate">{r.reason}</td>
-                  <td className="py-2 px-2">
-                    <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>
-                      {r.status}
-                    </Tag>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+            <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30">
+                <div className="flex justify-between mb-4">
+                    <h2 className="text-emerald-900 dark:text-emerald-100 font-bold flex gap-2"><Hourglass size={20}/> Converter</h2>
+                    <span className="text-xs font-bold bg-white dark:bg-black/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">1h = {rate}pts</span>
+                </div>
+                <div className="flex gap-3 items-end">
+                    <div className="flex-1"><label className="text-xs font-bold text-slate-500 uppercase">Horas</label><input type="number" min={1} value={convH} onChange={(e)=>setConvH(+e.target.value)} className="theme-input"/></div>
+                    <div className="pb-3 text-sm font-bold text-slate-700 dark:text-emerald-200">Custo: {convH*rate} pts</div>
+                    <Button onClick={handleConvert} disabled={currentUser.points < convH*rate} variant="success">Converter</Button>
+                </div>
+            </Card>
+            <Card>
+                <h2 className="text-lg font-bold mb-4 flex gap-2 text-slate-800 dark:text-white"><FileText className="text-emerald-600"/> Novo Pedido</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label><select value={req.type} onChange={(e)=>setReq({...req, type:e.target.value})} className="theme-input"><option value="gozo">Folga</option><option value="concessao">Crédito</option></select></div>
+                        <div><label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Horas</label><input type="number" min={1} value={req.hours} onChange={(e)=>setReq({...req, hours:+e.target.value})} className="theme-input"/></div>
+                    </div>
+                    <input value={req.reason} onChange={(e)=>setReq({...req, reason:e.target.value})} className="theme-input" placeholder="Motivo..." required/>
+                    <Button type="submit" disabled={loading} className="w-full">Enviar</Button>
+                </form>
+            </Card>
         </div>
-      </Card>
-
-      {/* Gamificação */}
+        <Card className="h-fit">
+            <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white">Histórico</h2>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {requests.map(r => (
+                    <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50">
+                        <div><div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">{r.type} ({r.hours}h)</div><div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div></div>
+                        <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag>
+                    </div>
+                ))}
+            </div>
+        </Card>
+      </div>
       <ChallengesManager currentUser={currentUser} />
-    </>
+    </div>
   );
 }
 
-// --- Dashboard de Admin ---
-
-function AdminDashboardContent({ currentUser }) {
-  const [activeTab, setActiveTab] = useState("requests"); // Abas de navegação
-  const [settings, setSettings] = useState(null);
+function AdminDashboardContent() {
+  const [activeTab, setActiveTab] = useState("requests");
   const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Função auxiliar para buscar dados gerais
-  const fetchAdminData = async () => {
-    try {
-      const [settingsRes, requestsRes] = await Promise.all([
-        admin.getSettings(),
-        admin.getAllRequests(),
-      ]);
-      setSettings(settingsRes.data);
-      setRequests(requestsRes.data);
-    } catch (e) { console.error(e); }
-  };
+  const fetchData = async () => { try { const r = await admin.getAllRequests(); setRequests(r.data); } catch (e) {} };
+  useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => { fetchAdminData(); }, []);
-
-  // Lógica de processar pedido
-  const handleProcessRequest = async (requestId, status) => {
-    try {
-        await admin.processRequest(requestId, status);
-        fetchAdminData();
-    } catch(e) { alert("Erro ao processar pedido."); }
-  };
-
-  // Lógica de atualizar settings
-  const handleUpdateSettings = async () => {
-      const novoValor = prompt("Nova taxa (pts por hora):", settings?.points_per_hour);
-      if(novoValor) {
-          await admin.updateSettings(parseInt(novoValor));
-          fetchAdminData();
-      }
-  };
+  const handleProcess = async (rid, status) => { try { await admin.processRequest(rid, status); fetchData(); } catch(e) { alert("Erro"); } };
 
   return (
     <>
-      {/* --- Navegação por Abas --- */}
-      <div className="flex flex-wrap gap-2 mb-6 border-b border-emerald-900/50 pb-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-emerald-900 mb-6 gap-1">
         {[
-            {id: 'requests', label: 'Visão Geral & Pedidos', icon: Clock},
-            {id: 'users', label: 'Gestão de Usuários', icon: Users},
-            {id: 'challenges', label: 'Criar Desafios', icon: Swords},
-            {id: 'reports', label: 'Relatórios & Entregas', icon: BarChart3}, // Nova Aba
+            {id: 'requests', label: 'Pedidos & Validação', icon: Clock},
+            {id: 'users', label: 'Usuários', icon: Users},
+            {id: 'challenges', label: 'Desafios', icon: Swords},
+            {id: 'reports', label: 'Relatórios', icon: BarChart3},
+            {id: 'config', label: 'Configurações', icon: Settings}, // <--- NOVA ABA
         ].map(tab => (
-            <button 
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-t-lg flex items-center gap-2 transition-colors text-sm font-medium ${
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 rounded-t-lg flex items-center gap-2 text-sm font-bold transition-all ${
                     activeTab === tab.id 
-                    ? 'bg-emerald-900/40 text-emerald-100 border-b-2 border-emerald-500' 
-                    : 'text-neutral-400 hover:text-emerald-200 hover:bg-emerald-900/20'
-                }`}
-            >
+                    ? 'bg-white dark:bg-neutral-900 border-t border-x border-slate-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 shadow-sm -mb-px' 
+                    : 'text-slate-500 dark:text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-300'
+                }`}>
                 <tab.icon size={16} /> {tab.label}
             </button>
         ))}
       </div>
 
-      {/* --- Conteúdo das Abas --- */}
-
-      {/* ABA 1: PEDIDOS & VALIDAÇÃO */}
       {activeTab === 'requests' && (
-        <div className="space-y-4">
-             <div className="grid md:grid-cols-3 gap-4">
-                <div onClick={handleUpdateSettings} className="cursor-pointer hover:opacity-80 transition">
-                    <Stat icon={Settings} label="Taxa de Conversão (Clique p/ Editar)" value={`${settings?.points_per_hour || 10} pts = 1h`} />
-                </div>
-                <Stat icon={Users} label="Total Pedidos" value={requests.length} />
-                <Stat icon={ShieldCheck} label="Modo Admin" value="Ativo" />
-            </div>
-
-            {/* Tabela de Pedidos */}
+        <div className="space-y-6 animate-in fade-in">
             <Card>
-                <h2 className="text-emerald-100 font-semibold mb-3">Solicitações Recentes</h2>
+                <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-white">Pedidos de Horas</h3>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-neutral-300">
+                    <table className="w-full">
                         <thead>
-                            <tr className="text-emerald-200 border-b border-emerald-800">
-                                <th className="p-2">Servidor</th>
-                                <th>Tipo</th>
-                                <th>Horas</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
+                            <tr><th className="theme-table-head">Nome</th><th className="theme-table-head">Tipo</th><th className="theme-table-head">Horas</th><th className="theme-table-head">Status</th><th className="theme-table-head">Ação</th></tr>
                         </thead>
                         <tbody>
-                            {requests.length === 0 && (
-                                <tr><td colSpan="5" className="py-4 text-center text-neutral-400">Sem solicitações.</td></tr>
-                            )}
                             {requests.map(r => (
-                                <tr key={r.id} className="border-b border-emerald-900/20">
-                                    <td className="p-2">{r.profiles?.name}</td>
-                                    <td>{r.type}</td>
-                                    <td>{r.hours}</td>
-                                    <td><Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag></td>
-                                    <td className="flex gap-1 py-1">
+                                <tr key={r.id} className="theme-table-row">
+                                    <td className="theme-table-cell font-medium">{r.profiles?.name}</td>
+                                    <td className="theme-table-cell">{r.type}</td>
+                                    <td className="theme-table-cell">{r.hours}h</td>
+                                    <td className="theme-table-cell"><Tag variant={r.status==='aprovado'?'success':r.status==='negado'?'danger':'pending'}>{r.status}</Tag></td>
+                                    <td className="theme-table-cell">
                                         {r.status === 'pendente' && (
-                                            <>
-                                                <Button variant="success" onClick={()=>handleProcessRequest(r.id, 'aprovado')}><Check size={12}/></Button>
-                                                <Button variant="danger" onClick={()=>handleProcessRequest(r.id, 'negado')}><LogOut size={12}/></Button>
-                                            </>
+                                            <div className="flex gap-2">
+                                                <Button variant="success" className="!px-2 !py-1" onClick={()=>handleProcess(r.id, 'aprovado')}><Check size={14}/></Button>
+                                                <Button variant="danger" className="!px-2 !py-1" onClick={()=>handleProcess(r.id, 'negado')}>X</Button>
+                                            </div>
                                         )}
                                     </td>
                                 </tr>
@@ -403,66 +177,33 @@ function AdminDashboardContent({ currentUser }) {
                     </table>
                 </div>
             </Card>
-            
-            {/* Validação de Provas (Fica aqui também, pois é uma tarefa diária) */}
             <AdminValidation />
         </div>
       )}
-
-      {/* ABA 2: GESTÃO DE USUÁRIOS */}
       {activeTab === 'users' && <AdminUsers />}
-      
-      {/* ABA 3: CRIAR DESAFIOS */}
       {activeTab === 'challenges' && <AdminChallenges />}
-
-      {/* ABA 4: RELATÓRIOS */}
       {activeTab === 'reports' && <AdminChallengeReport />}
-
+      {activeTab === 'config' && <AdminSettings />} {/* <--- NOVA TELA */}
     </>
   );
 }
 
-// --- Componente de Switch Principal ---
-
 const Dashboard = ({ Page, currentUser, isAdmin, onLogout, fetchProfile }) => {
-  const [conversionRate, setConversionRate] = useState(10); 
-
-  // Proteção contra tela branca
-  if (!currentUser) {
-    return (
-      <Page>
-        <div className="min-h-[70vh] grid place-items-center text-neutral-400">
-          <div className="text-center">
-            <p className="mb-4">A carregar dados do perfil...</p>
-            <button onClick={onLogout} className="text-emerald-400 hover:underline">
-              (Clique aqui se demorar muito para Sair)
-            </button>
-          </div>
-        </div>
-      </Page>
-    );
-  }
+  if (!currentUser) return <Page><div className="text-center mt-20 animate-pulse">Carregando...</div></Page>;
+  const days = (currentUser.hours / 8).toFixed(2);
 
   return (
     <Page>
       <Header user={currentUser} onLogout={onLogout} />
-      
-      <div className="grid md:grid-cols-3 gap-4">
-        <Stat icon={Clock} label="Saldo de Horas" value={`${currentUser.hours} h`} sub={`${toDays(currentUser.hours)} dia(s)`} />
-        <Stat icon={Trophy} label="Pontos" value={`${currentUser.points}`} sub={`${conversionRate} pts = 1h`} />
-        
-        {isAdmin ? (
-          <Stat icon={ShieldCheck} label="Função" value="Administrador" sub="Acesso total às operações." />
-        ) : (
-          <Stat icon={Users} label="Função" value={currentUser.role} />
-        )}
+      <div className="grid md:grid-cols-3 gap-4 mb-8">
+        <Stat icon={Clock} label="Saldo de Horas" value={`${currentUser.hours} h`} sub={`${days} dias de folga`} />
+        <Stat icon={Trophy} label="Meus Pontos" value={`${currentUser.points}`} sub="Disponíveis para troca" />
+        {isAdmin 
+            ? <Stat icon={ShieldCheck} label="Função" value="Administrador" sub="Acesso Total" />
+            : <Stat icon={Users} label="Função" value={currentUser.role} sub="Colaborador" />
+        }
       </div>
-
-      {isAdmin ? (
-        <AdminDashboardContent currentUser={currentUser} />
-      ) : (
-        <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />
-      )}
+      {isAdmin ? <AdminDashboardContent /> : <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />}
     </Page>
   );
 };

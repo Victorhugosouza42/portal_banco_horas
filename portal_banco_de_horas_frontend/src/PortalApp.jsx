@@ -1,17 +1,30 @@
 // src/PortalApp.jsx
 import React, { useState, useEffect } from 'react';
-import { setToken, getToken, clearToken, user } from './api.js'; // <-- CORRIGIDO
+import { setToken, getToken, clearToken, user } from './api.js';
 import LoginScreen from './LoginScreen.jsx'; 
 import Dashboard from './Dashboard.jsx'; 
+import { Moon, Sun } from "lucide-react";
 
 function PortalApp() {
+  // Lógica do Tema: Lê do localStorage ou usa 'dark' por padrão
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const brandName = "14 REGIONAL EXTREMO SUL";
 
-  // Função global para logout
+  // Aplica o tema ao HTML
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
   const handleLogout = () => {
     clearToken();
     setIsAuthenticated(false);
@@ -19,81 +32,45 @@ function PortalApp() {
     setIsAdmin(false);
   };
 
-  // Função para buscar o perfil do usuário (usado após login e no recarregamento)
   const fetchProfile = async () => {
-    if (!getToken()) {
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      return;
-    }
-
+    if (!getToken()) { setIsAuthenticated(false); setIsLoading(false); return; }
     try {
-      // Tenta buscar o perfil do usuário no nosso endpoint protegido /me
       const response = await user.getProfile();
-      const profile = response.data;
-      
-      setCurrentUser(profile);
-      setIsAdmin(profile.is_admin);
+      setCurrentUser(response.data);
+      setIsAdmin(response.data.is_admin);
       setIsAuthenticated(true);
     } catch (error) {
-      // Se a API retornar 401/403 (Token inválido/expirado), limpa o token
-      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        handleLogout(); 
-      }
-      console.error("Erro ao carregar perfil:", error);
-    } finally {
-      setIsLoading(false);
-    }
+      if (error.response?.status === 401) handleLogout(); 
+    } finally { setIsLoading(false); }
   };
 
-  // Efeito para buscar o perfil quando o componente monta (para persistir a sessão)
-  useEffect(() => {
-    fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
-  // --- Componente de Layout Base (A Page) ---
-  const Page = ({ children, className = "" }) => (
-    <div className="min-h-screen w-full" style={{ background: "#0b1f17" }}>
-      <div className={`max-w-7xl mx-auto px-4 py-6 ${className}`}>
+  // Componente de Página usando a classe .theme-page do CSS
+  const Page = ({ children }) => (
+    <div className="theme-page">
+      {/* Botão Flutuante de Tema */}
+      <button 
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 shadow-lg text-slate-600 dark:text-yellow-400 hover:scale-110 transition-transform"
+      >
+        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {children}
-        <footer className="mt-10 text-center text-sm text-neutral-300 opacity-80">
+        <footer className="mt-10 text-center text-xs text-subtitle opacity-70">
           Desenvolvido por {brandName}
         </footer>
       </div>
     </div>
   );
 
-  if (isLoading) {
-    return (
-      <Page>
-        <div className="min-h-[70vh] grid place-items-center text-emerald-400 text-xl">
-          Carregando portal...
-        </div>
-      </Page>
-    );
-  }
+  if (isLoading) return <Page><div className="min-h-[70vh] grid place-items-center animate-pulse">Carregando...</div></Page>;
 
-  if (!isAuthenticated) {
-    return (
-      // Renderiza a tela de login se não estiver autenticado
-      <LoginScreen 
-        onLoginSuccess={fetchProfile}
-        Page={Page}
-      />
-    );
-  }
+  if (!isAuthenticated) return <LoginScreen onLoginSuccess={fetchProfile} Page={Page} />;
 
-  // Renderiza o Dashboard se estiver autenticado
-  return (
-    <Dashboard 
-      currentUser={currentUser}
-      isAdmin={isAdmin}
-      onLogout={handleLogout}
-      Page={Page}
-      fetchProfile={fetchProfile} // Permite atualizar o perfil após ações (conversão, etc.)
-    />
-  );
+  return <Dashboard currentUser={currentUser} isAdmin={isAdmin} onLogout={handleLogout} Page={Page} fetchProfile={fetchProfile} />;
 }
 
 export default PortalApp;
