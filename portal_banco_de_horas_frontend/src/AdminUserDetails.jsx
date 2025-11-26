@@ -15,7 +15,11 @@ const Tag = ({ children, variant="default" }) => {
 
 const AdminUserDetails = ({ user, onBack }) => {
     const [history, setHistory] = useState([]);
-    const [adjustHours, setAdjustHours] = useState(0);
+    
+    // Novo estado para controlar valor e unidade
+    const [amount, setAmount] = useState(0);
+    const [unit, setUnit] = useState("hours"); // 'hours' ou 'days'
+    
     const [reason, setReason] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -30,16 +34,21 @@ const AdminUserDetails = ({ user, onBack }) => {
 
     const handleAdjust = async (e) => {
         e.preventDefault();
-        if (adjustHours === 0) return alert("Digite um valor.");
+        if (amount === 0) return alert("Digite um valor.");
         if (!reason) return alert("Motivo é obrigatório para auditoria.");
         
         setLoading(true);
+        
+        // LÓGICA DE CONVERSÃO
+        // Se selecionou dias, multiplica por 8. Se for horas, mantém.
+        const hoursToSend = unit === 'days' ? amount * 8 : amount;
+
         try {
-            await admin.adjustUserHours(user.id, parseInt(adjustHours), reason);
-            alert("Horas ajustadas com sucesso!");
-            setAdjustHours(0);
+            await admin.adjustUserHours(user.id, parseInt(hoursToSend), reason);
+            alert(`Ajuste realizado! (${hoursToSend} horas registadas)`);
+            setAmount(0);
             setReason("");
-            loadHistory(); // Atualiza o histórico na hora
+            loadHistory();
         } catch (e) {
             alert("Erro ao ajustar.");
         } finally {
@@ -49,7 +58,6 @@ const AdminUserDetails = ({ user, onBack }) => {
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            {/* Header com Botão Voltar */}
             <div className="flex items-center gap-4">
                 <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full transition">
                     <ArrowLeft className="text-slate-600 dark:text-slate-300" />
@@ -65,20 +73,39 @@ const AdminUserDetails = ({ user, onBack }) => {
                 {/* Painel de Ajuste Manual */}
                 <div className="theme-card h-fit">
                     <h3 className="font-bold text-lg mb-4 flex gap-2 text-slate-800 dark:text-white">
-                        <PlusCircle className="text-emerald-600"/> Ajuste Manual de Horas
+                        <PlusCircle className="text-emerald-600"/> Ajuste Manual
                     </h3>
                     <form onSubmit={handleAdjust} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Horas a Adicionar/Remover</label>
-                            <input type="number" className="theme-input" 
-                                placeholder="Ex: 8 ou -4"
-                                value={adjustHours} onChange={e=>setAdjustHours(e.target.value)} />
-                            <p className="text-xs text-slate-400 mt-1">Use números negativos para remover horas.</p>
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Quantidade</label>
+                                <input 
+                                    type="number" 
+                                    step="0.5"
+                                    className="theme-input" 
+                                    placeholder="Ex: 1 ou -1"
+                                    value={amount} onChange={e=>setAmount(e.target.value)} 
+                                />
+                            </div>
+                            <div className="w-1/3">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Unidade</label>
+                                <select className="theme-input" value={unit} onChange={e=>setUnit(e.target.value)}>
+                                    <option value="hours">Horas</option>
+                                    <option value="days">Dias</option>
+                                </select>
+                            </div>
                         </div>
+                        
+                        {/* Feedback */}
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Isso ajustará: <b>{unit === 'days' ? amount * 8 : amount} horas</b> no saldo.
+                            <br/>(Use negativos para remover).
+                        </p>
+
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Motivo (Obrigatório)</label>
                             <input className="theme-input" 
-                                placeholder="Ex: Compensação de feriado..."
+                                placeholder="Ex: Compensação..."
                                 value={reason} onChange={e=>setReason(e.target.value)} />
                         </div>
                         <button disabled={loading} className="btn-primary w-full justify-center">
@@ -87,10 +114,10 @@ const AdminUserDetails = ({ user, onBack }) => {
                     </form>
                 </div>
 
-                {/* Histórico do Usuário */}
+                {/* Histórico */}
                 <div className="theme-card">
                     <h3 className="font-bold text-lg mb-4 flex gap-2 text-slate-800 dark:text-white">
-                        <History className="text-blue-600"/> Histórico de Movimentações
+                        <History className="text-blue-600"/> Histórico
                     </h3>
                     <div className="overflow-y-auto max-h-[400px] space-y-2 pr-2">
                         {history.length === 0 && <p className="text-slate-400 text-center py-4">Sem histórico.</p>}
@@ -98,7 +125,8 @@ const AdminUserDetails = ({ user, onBack }) => {
                             <div key={h.id} className="p-3 rounded-lg bg-slate-50 dark:bg-neutral-950 border border-slate-100 dark:border-emerald-900/20 flex justify-between items-center">
                                 <div>
                                     <div className="font-bold text-slate-700 dark:text-emerald-100">
-                                        {h.type === 'concessao' ? '+ Crédito' : '- Folga'} ({h.hours}h)
+                                        {h.type === 'concessao' ? '+ Crédito' : '- Folga'} 
+                                        <span className="ml-1">({h.hours}h / {(h.hours/8).toFixed(1)}d)</span>
                                     </div>
                                     <div className="text-xs text-slate-500">{h.reason}</div>
                                     <div className="text-[10px] text-slate-400">{new Date(h.created_at).toLocaleDateString()}</div>

@@ -58,7 +58,8 @@ function Header({ user, onLogout }) {
 }
 
 function UserDashboardContent({ currentUser, fetchProfile }) {
-  const [req, setReq] = useState({ type: "gozo", hours: 4, reason: "" });
+  // Estado agora usa 'amount' (quantidade) e 'unit' (unidade) em vez de 'hours' direto
+  const [req, setReq] = useState({ type: "gozo", amount: 1, unit: "days", reason: "" });
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [rate, setRate] = useState(10);
@@ -70,13 +71,35 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
       admin.getSettings().then(r => setRate(r.data.points_per_hour)).catch(()=>{});
   }, []);
 
-  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { await user.createRequest(req.type, req.hours, req.reason); fetchRequests(); setReq({ type: "gozo", hours: 4, reason: "" }); alert("Enviado!"); } catch (e) { alert("Erro."); } finally { setLoading(false); } };
+  const handleSubmit = async (e) => {
+    e.preventDefault(); 
+    setLoading(true);
+    
+    // LÓGICA DE CONVERSÃO:
+    // Se a unidade for 'days', multiplica por 8. Se for 'hours', mantém o valor.
+    const finalHours = req.unit === 'days' ? req.amount * 8 : req.amount;
+
+    try {
+      // Envia sempre em horas para a API
+      await user.createRequest(req.type, finalHours, req.reason);
+      
+      fetchRequests(); 
+      setReq({ type: "gozo", amount: 1, unit: "days", reason: "" }); // Reset
+      alert("Enviado com sucesso!"); 
+    } catch (e) { 
+      alert("Erro ao enviar."); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
   const handleConvert = async () => { try { await user.convertPoints(convH); await fetchProfile(); alert("Convertido!"); } catch(e){alert("Erro");} };
 
   return (
     <div className="space-y-6">
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+            {/* Widget Conversão */}
             <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30">
                 <div className="flex justify-between mb-4">
                     <h2 className="text-emerald-900 dark:text-emerald-100 font-bold flex gap-2"><Hourglass size={20}/> Converter</h2>
@@ -88,15 +111,54 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
                     <Button onClick={handleConvert} disabled={currentUser.points < convH*rate} variant="success">Converter</Button>
                 </div>
             </Card>
+
             <Card>
                 <h2 className="text-lg font-bold mb-4 flex gap-2 text-slate-800 dark:text-white"><FileText className="text-emerald-600"/> Novo Pedido</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label><select value={req.type} onChange={(e)=>setReq({...req, type:e.target.value})} className="theme-input"><option value="gozo">Folga</option><option value="concessao">Crédito</option></select></div>
-                        <div><label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Horas</label><input type="number" min={1} value={req.hours} onChange={(e)=>setReq({...req, hours:+e.target.value})} className="theme-input"/></div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Tipo</label>
+                            <select value={req.type} onChange={(e)=>setReq({...req, type:e.target.value})} className="theme-input">
+                                <option value="gozo">Folga</option>
+                                <option value="concessao">Crédito</option>
+                            </select>
+                        </div>
+                        
+                        {/* SELEÇÃO DE QUANTIDADE E UNIDADE */}
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Qtd.</label>
+                                <input 
+                                    type="number" 
+                                    min={0.5} 
+                                    step={0.5} 
+                                    value={req.amount} 
+                                    onChange={(e)=>setReq({...req, amount:+e.target.value})} 
+                                    className="theme-input"
+                                />
+                            </div>
+                            <div className="w-1/3">
+                                <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Unid.</label>
+                                <select 
+                                    value={req.unit} 
+                                    onChange={(e)=>setReq({...req, unit:e.target.value})} 
+                                    className="theme-input"
+                                >
+                                    <option value="days">Dias</option>
+                                    <option value="hours">Horas</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Feedback Visual da Conversão */}
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded">
+                        ℹ️ Você está solicitando: <b>{req.unit === 'days' ? req.amount * 8 : req.amount} horas</b> 
+                        {req.unit === 'hours' && ` (${(req.amount / 8).toFixed(2)} dias)`}
+                    </div>
+
                     <input value={req.reason} onChange={(e)=>setReq({...req, reason:e.target.value})} className="theme-input" placeholder="Motivo..." required/>
-                    <Button type="submit" disabled={loading} className="w-full">Enviar</Button>
+                    <Button type="submit" disabled={loading} className="w-full">Enviar Pedido</Button>
                 </form>
             </Card>
         </div>
@@ -105,7 +167,13 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {requests.map(r => (
                     <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50">
-                        <div><div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">{r.type} ({r.hours}h)</div><div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div></div>
+                        <div>
+                            {/* Mostra Horas e Dias no Histórico */}
+                            <div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">
+                                {r.type === 'gozo' ? 'Folga' : 'Crédito'} • {r.hours}h <span className="text-xs opacity-70">({(r.hours/8).toFixed(1)}d)</span>
+                            </div>
+                            <div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div>
+                        </div>
                         <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag>
                     </div>
                 ))}
