@@ -3,31 +3,41 @@
 @tailwind utilities;
 
 @layer components {
-  /* --- ESTRUTURA PRINCIPAL --- */
-  
-  /* Fundo da página: Verde muito claro no Light / Verde muito escuro no Dark */
+  /* 1. Fundo da Aplicação - Transição Suave */
   .theme-page {
-    @apply min-h-screen w-full bg-emerald-50 dark:bg-[#0b1f17] text-slate-800 dark:text-emerald-100 transition-colors duration-300 font-sans;
+    @apply min-h-screen w-full bg-emerald-50 dark:bg-[#0b1f17] text-slate-800 dark:text-emerald-100 transition-colors duration-300 ease-in-out font-sans;
   }
 
-  /* Cartões: Branco no Light / Preto Suave no Dark */
+  /* 2. Cartões - Agora com transition-all */
   .theme-card {
-    @apply bg-white dark:bg-neutral-900 border border-slate-200 dark:border-emerald-900/40 rounded-2xl shadow-sm dark:shadow-xl p-6 transition-all duration-300;
+    @apply bg-white dark:bg-neutral-900 border border-slate-200 dark:border-emerald-900/40 rounded-2xl shadow-sm dark:shadow-xl p-6 transition-all duration-300 ease-in-out;
   }
 
-  /* Inputs: Campos de texto adaptáveis */
+  /* 3. Inputs - Transição nas bordas e fundo */
   .theme-input {
-    @apply w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-emerald-800 text-slate-800 dark:text-emerald-100 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-colors duration-300;
+    @apply w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-emerald-800 text-slate-800 dark:text-emerald-100 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all duration-300;
   }
 
-  /* --- BOTÕES --- */
+  /* 4. Tabelas */
+  .theme-table-head {
+    @apply text-left text-xs font-bold text-slate-500 dark:text-emerald-500 uppercase tracking-wider border-b border-slate-200 dark:border-emerald-900/50 pb-3 transition-colors duration-300;
+  }
   
+  .theme-table-row {
+    @apply border-b border-slate-100 dark:border-emerald-900/20 hover:bg-slate-50 dark:hover:bg-neutral-800/30 transition-colors duration-200;
+  }
+  
+  .theme-table-cell {
+    @apply py-3 px-2 text-sm text-slate-700 dark:text-slate-300 transition-colors duration-300;
+  }
+
+  /* 5. Botões - Transição de fundo e transformação */
   .btn {
-    @apply px-4 py-2 rounded-xl font-medium transition transform active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 cursor-pointer;
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-300 active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 cursor-pointer;
   }
 
   .btn-primary {
-    @apply btn bg-emerald-600 hover:bg-emerald-700 dark:bg-[#0ea567] dark:hover:bg-[#0b7d4f] text-white shadow-md;
+    @apply btn bg-emerald-600 hover:bg-emerald-700 dark:bg-[#0ea567] dark:hover:bg-[#0b7d4f] text-white shadow-md hover:shadow-lg;
   }
 
   .btn-ghost {
@@ -47,13 +57,12 @@
   }
 
   .btn-icon {
-    @apply p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400;
+    @apply p-2 rounded-lg transition-colors duration-300 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400;
   }
 
-  /* --- TAGS & BADGES --- */
-  
+  /* 6. Tags */
   .tag {
-    @apply px-2.5 py-0.5 rounded-md text-xs font-bold border transition-colors;
+    @apply px-2.5 py-0.5 rounded-md text-xs font-bold border transition-colors duration-300;
   }
   
   .tag-default { @apply tag bg-slate-100 dark:bg-emerald-900/30 text-slate-600 dark:text-emerald-300 border-slate-200 dark:border-emerald-800; }
@@ -61,21 +70,7 @@
   .tag-danger  { @apply tag bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800; }
   .tag-pending { @apply tag bg-amber-50 dark:bg-yellow-900/20 text-amber-700 dark:text-yellow-500 border-amber-200 dark:border-yellow-800; }
 
-  /* --- TABELAS --- */
-  
-  .theme-table-head {
-    @apply text-left text-xs font-bold text-slate-500 dark:text-emerald-500 uppercase tracking-wider border-b border-slate-200 dark:border-emerald-900/50 pb-3;
-  }
-  
-  .theme-table-row {
-    @apply border-b border-slate-100 dark:border-emerald-900/20 hover:bg-slate-50 dark:hover:bg-emerald-900/10 transition-colors;
-  }
-  
-  .theme-table-cell {
-    @apply py-3 px-2 text-sm text-slate-700 dark:text-slate-300;
-  }
-
-  /* --- TEXTOS --- */
-  .text-title { @apply text-slate-900 dark:text-emerald-50 font-bold; }
-  .text-subtitle { @apply text-slate-500 dark:text-emerald-400/80; }
+  /* 7. Textos */
+  .text-title { @apply text-slate-900 dark:text-emerald-50 font-bold transition-colors duration-300; }
+  .text-subtitle { @apply text-slate-500 dark:text-emerald-400/80 transition-colors duration-300; }
 }

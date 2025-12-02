@@ -1,6 +1,7 @@
 # Ficheiro: main.py
 # (Versão 1.0.9 - Com Gestão de Cargos)
 
+from zoneinfo import ZoneInfo
 from fastapi import FastAPI, HTTPException, status, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -135,10 +136,21 @@ def admin_get_user_requests(uid: UUID):
 def admin_process_request(rid: UUID, update_data: AdminRequestStatusUpdate):
     supabase.rpc('process_request', {'p_request_id': str(rid), 'p_new_status': update_data.status.value}).execute()
 
-@admin_router.post("/challenges", response_model=Challenge)
-def admin_create_challenge(c: AdminChallengeCreate):
-    res = supabase.table('challenges').insert(c.model_dump(mode='json')).execute()
-    return Challenge.model_validate(res.data[0])
+@admin_router.post("/challenges", response_model=Challenge, status_code=status.HTTP_201_CREATED)
+def admin_create_challenge(challenge_data: AdminChallengeCreate):
+    """ [ADMIN] Cria um novo desafio de gamificação com Fuso Horário Correto. """
+    try:
+        if challenge_data.due_at:
+            naive_date = challenge_data.due_at
+            aware_date = naive_date.replace(tzinfo=ZoneInfo("America/Sao_Paulo"))
+            challenge_data.due_at = aware_date        
+        response = supabase.table('challenges') \
+            .insert(challenge_data.model_dump(mode='json')) \
+            .execute()
+            
+        return Challenge.model_validate(response.data[0])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @admin_router.delete("/challenges/{cid}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_challenge(cid: UUID):
