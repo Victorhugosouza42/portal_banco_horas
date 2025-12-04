@@ -1,4 +1,6 @@
 // src/Dashboard.jsx
+// (Versão Corrigida: Remove dependência de 'Page' para corrigir tela branca)
+
 import React, { useState, useEffect } from 'react';
 import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3 } from "lucide-react";
 import { user, admin } from './api.js';
@@ -18,7 +20,7 @@ const Button = ({ children, onClick, variant="primary", disabled, className="" }
 
 const Stat = ({ icon: Icon, label, value, sub }) => (
   <Card className="!p-4 flex items-center gap-4">
-    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
+    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 transition-colors duration-300">
       <Icon size={24} />
     </div>
     <div>
@@ -68,9 +70,12 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
   const [convH, setConvH] = useState(1);
 
   const fetchRequests = async () => { try { const r = await user.getRequests(); setRequests(r.data); } catch (e) {} };
+  
+  // Proteção para carregar a taxa (tenta user.getSettings, fallback para admin.getSettings)
   useEffect(() => { 
       fetchRequests(); 
-      admin.getSettings().then(r => setRate(r.data.points_per_hour)).catch(()=>{});
+      const getSet = user.getSettings || admin.getSettings;
+      if(getSet) getSet().then(r => setRate(r.data.points_per_hour)).catch(()=>{});
   }, []);
 
   const handleSubmit = async (e) => {
@@ -82,21 +87,25 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
 
   const handleConvert = async () => { try { await user.convertPoints(convH); await fetchProfile(); alert("Convertido!"); } catch(e){alert("Erro");} };
 
+  const cost = convH * rate;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+            {/* Conversão */}
             <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30">
                 <div className="flex justify-between mb-4">
-                    <h2 className="text-emerald-900 dark:text-emerald-100 font-bold flex gap-2"><Hourglass size={20}/> Converter</h2>
-                    <span className="text-xs font-bold bg-white dark:bg-black/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">1h = {rate}pts</span>
+                    <h2 className="text-emerald-900 dark:text-emerald-100 font-bold flex gap-2"><Hourglass size={20}/> Converter Pontos</h2>
+                    <span className="text-xs font-bold bg-white dark:bg-black/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">1h = {rate} pts</span>
                 </div>
                 <div className="flex gap-3 items-end">
                     <div className="flex-1"><label className="text-xs font-bold text-slate-500 uppercase">Horas</label><input type="number" min={1} value={convH} onChange={(e)=>setConvH(+e.target.value)} className="theme-input"/></div>
-                    <div className="pb-3 text-sm font-bold text-slate-700 dark:text-emerald-200">Custo: {convH*rate} pts</div>
-                    <Button onClick={handleConvert} disabled={currentUser.points < convH*rate} variant="success">Converter</Button>
+                    <div className="pb-3 text-sm font-bold text-slate-700 dark:text-emerald-200">Custo: {cost} pts</div>
+                    <Button onClick={handleConvert} disabled={currentUser.points < cost} variant="success">Converter</Button>
                 </div>
             </Card>
+            {/* Pedido */}
             <Card>
                 <h2 className="text-lg font-bold mb-4 flex gap-2 text-slate-800 dark:text-white"><FileText className="text-emerald-600"/> Novo Pedido</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,6 +119,9 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
                             <div className="w-1/3"><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Unid.</label><select value={req.unit} onChange={(e)=>setReq({...req, unit:e.target.value})} className="theme-input"><option value="days">Dias</option><option value="hours">Horas</option></select></div>
                         </div>
                     </div>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded transition-colors">
+                        Resumo: <b>{req.unit === 'days' ? req.amount * 8 : req.amount} horas</b>
+                    </div>
                     <input value={req.reason} onChange={(e)=>setReq({...req, reason:e.target.value})} className="theme-input" placeholder="Motivo..." required/>
                     <Button type="submit" disabled={loading} className="w-full">Enviar Pedido</Button>
                 </form>
@@ -119,9 +131,9 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
             <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white">Histórico</h2>
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {requests.map(r => (
-                    <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50">
+                    <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50 hover:bg-slate-100 dark:hover:bg-neutral-900 transition-colors">
                         <div>
-                            <div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">{r.type === 'gozo' ? 'Folga' : 'Crédito'} • {r.hours}h</div>
+                            <div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">{r.type === 'gozo' ? 'Folga' : 'Crédito'} • {r.hours}h <span className="text-[10px] opacity-70">({(r.hours/8).toFixed(1)}d)</span></div>
                             <div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div>
                         </div>
                         <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag>
@@ -137,14 +149,10 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
 
 // --- Admin Content ---
 function AdminDashboardContent() {
-  // CORREÇÃO: Estado persiste no localStorage para não resetar ao mudar tema
   const [activeTab, setActiveTab] = useState(localStorage.getItem('adminTab') || "requests");
   const [requests, setRequests] = useState([]);
 
-  // Salva a aba sempre que mudar
-  useEffect(() => {
-      localStorage.setItem('adminTab', activeTab);
-  }, [activeTab]);
+  useEffect(() => { localStorage.setItem('adminTab', activeTab); }, [activeTab]);
 
   const fetchData = async () => { try { const r = await admin.getAllRequests(); setRequests(r.data); } catch (e) {} };
   useEffect(() => { fetchData(); }, []);
@@ -162,7 +170,7 @@ function AdminDashboardContent() {
             {id: 'config', label: 'Configurações', icon: Settings},
         ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 rounded-t-lg flex items-center gap-2 text-sm font-bold transition-all ${
+                className={`px-4 py-2.5 rounded-t-lg flex items-center gap-2 text-sm font-bold transition-all duration-300 ${
                     activeTab === tab.id 
                     ? 'bg-white dark:bg-neutral-900 border-t border-x border-slate-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 shadow-sm -mb-px' 
                     : 'text-slate-500 dark:text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-300'
@@ -173,9 +181,7 @@ function AdminDashboardContent() {
       </div>
 
       {activeTab === 'requests' && (
-        <div className="space-y-6 animate-in fade-in">
-            {/* REMOVIDOS OS 3 CARDS QUE PEDIU PARA TIRAR */}
-
+        <div className="space-y-6 animate-in fade-in duration-500">
             <Card>
                 <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-white">Pedidos de Horas</h3>
                 <div className="overflow-x-auto">
@@ -192,15 +198,11 @@ function AdminDashboardContent() {
                         </thead>
                         <tbody>
                             {requests.map(r => (
-                                <tr key={r.id} className="theme-table-row">
-                                    <td className="theme-table-cell font-medium truncate max-w-[150px]" title={r.profiles?.name}>
-                                        {r.profiles?.name}
-                                    </td>
+                                <tr key={r.id} className="theme-table-row transition-colors">
+                                    <td className="theme-table-cell font-medium truncate max-w-[150px]" title={r.profiles?.name}>{r.profiles?.name}</td>
                                     <td className="theme-table-cell">{r.type}</td>
-                                    <td className="theme-table-cell">{r.hours}h</td>
-                                    <td className="theme-table-cell truncate max-w-[250px] text-slate-500 dark:text-slate-400" title={r.reason}>
-                                        {r.reason || '-'}
-                                    </td>
+                                    <td className="theme-table-cell font-bold">{r.hours}h</td>
+                                    <td className="theme-table-cell truncate max-w-[250px] text-slate-500 dark:text-slate-400 italic" title={r.reason}>{r.reason || '-'}</td>
                                     <td className="theme-table-cell"><Tag variant={r.status==='aprovado'?'success':r.status==='negado'?'danger':'pending'}>{r.status}</Tag></td>
                                     <td className="theme-table-cell">
                                         {r.status === 'pendente' && (
@@ -227,15 +229,22 @@ function AdminDashboardContent() {
   );
 }
 
-// ... (Mantenha todo o código de cima: imports, UI Components, Header, UserDashboardContent, AdminDashboardContent)
-
-// --- APP CONTAINER (Sem Wrapper Page) ---
+// --- APP CONTAINER ---
+// Importante: Removemos a prop 'Page'. O Layout é gerido pelo PortalApp.
 const Dashboard = ({ currentUser, isAdmin, onLogout, fetchProfile }) => {
-  if (!currentUser) return <div className="text-center mt-20 animate-pulse text-slate-500">Carregando dados...</div>;
+  // Proteção: Se não houver usuário, mostra carregando em vez de tela branca
+  if (!currentUser) {
+    return (
+      <div className="min-h-[50vh] grid place-items-center text-slate-500 animate-pulse">
+        A carregar dados do utilizador...
+      </div>
+    );
+  }
+
   const days = (currentUser.hours / 8).toFixed(2);
 
   return (
-    <> {/* Fragmento em vez de Page */}
+    <>
       <Header user={currentUser} onLogout={onLogout} />
       
       <div className="grid md:grid-cols-3 gap-4 mb-8">
