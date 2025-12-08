@@ -1,9 +1,11 @@
 // src/Dashboard.jsx
-// (Versão Corrigida: Remove dependência de 'Page' para corrigir tela branca)
+// (Versão Corrigida: Removida dependência de 'Page')
 
 import React, { useState, useEffect } from 'react';
-import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3 } from "lucide-react";
+import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3, User, Lock } from "lucide-react";
 import { user, admin } from './api.js';
+
+// Componentes Filhos
 import ChallengesManager from './ChallengesManager.jsx'; 
 import AdminValidation from './AdminValidation.jsx'; 
 import AdminUsers from './AdminUsers.jsx';
@@ -61,6 +63,60 @@ function Header({ user, onLogout }) {
   );
 }
 
+// --- User Profile Card ---
+function UserProfileCard({ currentUser }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) return alert("A senha deve ter pelo menos 6 caracteres.");
+    
+    setLoading(true);
+    try {
+      await user.updatePassword(newPassword); 
+      alert("Senha atualizada com sucesso!");
+      setNewPassword("");
+    } catch (e) {
+      alert("Erro ao atualizar senha.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="h-fit">
+      <h2 className="text-lg font-bold mb-4 flex gap-2 text-slate-800 dark:text-white border-b border-slate-100 dark:border-emerald-900/30 pb-2">
+        <User className="text-emerald-600"/> Minha Conta
+      </h2>
+      <div className="flex flex-col gap-4">
+        <div className="text-sm">
+          <p className="text-slate-500 dark:text-neutral-400 text-xs uppercase font-bold mb-1">Email Cadastrado</p>
+          <div className="font-medium text-slate-800 dark:text-emerald-100 bg-slate-50 dark:bg-neutral-950 p-2 rounded border border-slate-200 dark:border-emerald-900/30">
+             {currentUser.email}
+          </div>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="pt-2">
+           <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Alterar Senha</label>
+           <div className="flex gap-2">
+             <input 
+               type="password" 
+               className="theme-input" 
+               placeholder="Nova senha..."
+               value={newPassword}
+               onChange={(e) => setNewPassword(e.target.value)}
+             />
+             <Button type="submit" disabled={loading || !newPassword} variant="primary" className="!px-3">
+               <Lock size={16}/>
+             </Button>
+           </div>
+        </form>
+      </div>
+    </Card>
+  );
+}
+
 // --- User Dashboard ---
 function UserDashboardContent({ currentUser, fetchProfile }) {
   const [req, setReq] = useState({ type: "gozo", amount: 1, unit: "days", reason: "" });
@@ -71,7 +127,6 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
 
   const fetchRequests = async () => { try { const r = await user.getRequests(); setRequests(r.data); } catch (e) {} };
   
-  // Proteção para carregar a taxa (tenta user.getSettings, fallback para admin.getSettings)
   useEffect(() => { 
       fetchRequests(); 
       const getSet = user.getSettings || admin.getSettings;
@@ -97,7 +152,7 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
             <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30">
                 <div className="flex justify-between mb-4">
                     <h2 className="text-emerald-900 dark:text-emerald-100 font-bold flex gap-2"><Hourglass size={20}/> Converter Pontos</h2>
-                    <span className="text-xs font-bold bg-white dark:bg-black/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">1h = {rate} pts</span>
+                    <span className="text-xs font-bold bg-white dark:bg-black/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">1h = {rate}pts</span>
                 </div>
                 <div className="flex gap-3 items-end">
                     <div className="flex-1"><label className="text-xs font-bold text-slate-500 uppercase">Horas</label><input type="number" min={1} value={convH} onChange={(e)=>setConvH(+e.target.value)} className="theme-input"/></div>
@@ -105,6 +160,7 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
                     <Button onClick={handleConvert} disabled={currentUser.points < cost} variant="success">Converter</Button>
                 </div>
             </Card>
+            
             {/* Pedido */}
             <Card>
                 <h2 className="text-lg font-bold mb-4 flex gap-2 text-slate-800 dark:text-white"><FileText className="text-emerald-600"/> Novo Pedido</h2>
@@ -119,28 +175,36 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
                             <div className="w-1/3"><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Unid.</label><select value={req.unit} onChange={(e)=>setReq({...req, unit:e.target.value})} className="theme-input"><option value="days">Dias</option><option value="hours">Horas</option></select></div>
                         </div>
                     </div>
-                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded transition-colors">
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded transition-colors border border-emerald-100 dark:border-emerald-900/30">
                         Resumo: <b>{req.unit === 'days' ? req.amount * 8 : req.amount} horas</b>
                     </div>
-                    <input value={req.reason} onChange={(e)=>setReq({...req, reason:e.target.value})} className="theme-input" placeholder="Motivo..." required/>
+                    <input value={req.reason} onChange={(e)=>setReq({...req, reason:e.target.value})} className="theme-input" placeholder="Motivo (Ex: Atestado...)" required/>
                     <Button type="submit" disabled={loading} className="w-full">Enviar Pedido</Button>
                 </form>
             </Card>
         </div>
-        <Card className="h-fit">
-            <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white">Histórico</h2>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                {requests.map(r => (
-                    <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50 hover:bg-slate-100 dark:hover:bg-neutral-900 transition-colors">
-                        <div>
-                            <div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">{r.type === 'gozo' ? 'Folga' : 'Crédito'} • {r.hours}h <span className="text-[10px] opacity-70">({(r.hours/8).toFixed(1)}d)</span></div>
-                            <div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div>
+
+        <div className="flex flex-col gap-6">
+            <UserProfileCard currentUser={currentUser} />
+
+            <Card className="h-fit">
+                <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white">Histórico</h2>
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {requests.length === 0 && <p className="text-slate-400 text-center text-sm py-4">Nenhum pedido.</p>}
+                    {requests.map(r => (
+                        <div key={r.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/50 hover:bg-slate-100 dark:hover:bg-neutral-900 transition-colors">
+                            <div>
+                                <div className="font-semibold text-sm text-slate-700 dark:text-emerald-200">
+                                    {r.type === 'gozo' ? 'Folga' : 'Crédito'} • {r.hours}h <span className="text-[10px] opacity-70">({(r.hours/8).toFixed(1)}d)</span>
+                                </div>
+                                <div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div>
+                            </div>
+                            <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag>
                         </div>
-                        <Tag variant={r.status === 'aprovado' ? 'success' : r.status === 'negado' ? 'danger' : 'pending'}>{r.status}</Tag>
-                    </div>
-                ))}
-            </div>
-        </Card>
+                    ))}
+                </div>
+            </Card>
+        </div>
       </div>
       <ChallengesManager currentUser={currentUser} />
     </div>
@@ -229,14 +293,13 @@ function AdminDashboardContent() {
   );
 }
 
-// --- APP CONTAINER ---
-// Importante: Removemos a prop 'Page'. O Layout é gerido pelo PortalApp.
+// --- APP CONTAINER (CORRIGIDO: Sem prop 'Page') ---
 const Dashboard = ({ currentUser, isAdmin, onLogout, fetchProfile }) => {
-  // Proteção: Se não houver usuário, mostra carregando em vez de tela branca
+  // Proteção: Se não houver usuário, mostra carregando (não usa Page)
   if (!currentUser) {
     return (
-      <div className="min-h-[50vh] grid place-items-center text-slate-500 animate-pulse">
-        A carregar dados do utilizador...
+      <div className="min-h-screen grid place-items-center bg-emerald-50 dark:bg-[#0b1f17] text-slate-500">
+        <div className="text-center animate-pulse"><p className="mb-2">A carregar dados...</p></div>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 // src/AdminUserDetails.jsx
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, PlusCircle, History } from "lucide-react";
+import { ArrowLeft, Clock, PlusCircle, History, Trophy } from "lucide-react";
 import { admin } from './api';
 
 const Tag = ({ children, variant="default" }) => {
@@ -16,12 +16,14 @@ const Tag = ({ children, variant="default" }) => {
 const AdminUserDetails = ({ user, onBack }) => {
     const [history, setHistory] = useState([]);
     
-    // Novo estado para controlar valor e unidade
+    // Estado para controlar valor e unidade
     const [amount, setAmount] = useState(0);
-    const [unit, setUnit] = useState("hours"); // 'hours' ou 'days'
-    
+    const [unit, setUnit] = useState("hours"); 
     const [reason, setReason] = useState("");
     const [loading, setLoading] = useState(false);
+    
+    // Estado local para atualizar o saldo visualmente após o ajuste
+    const [currentBalance, setCurrentBalance] = useState(user.hours);
 
     const loadHistory = async () => {
         try {
@@ -38,14 +40,15 @@ const AdminUserDetails = ({ user, onBack }) => {
         if (!reason) return alert("Motivo é obrigatório para auditoria.");
         
         setLoading(true);
-        
-        // LÓGICA DE CONVERSÃO
-        // Se selecionou dias, multiplica por 8. Se for horas, mantém.
         const hoursToSend = unit === 'days' ? amount * 8 : amount;
 
         try {
             await admin.adjustUserHours(user.id, parseInt(hoursToSend), reason);
             alert(`Ajuste realizado! (${hoursToSend} horas registadas)`);
+            
+            // Atualiza o saldo visualmente
+            setCurrentBalance(prev => prev + parseInt(hoursToSend));
+            
             setAmount(0);
             setReason("");
             loadHistory();
@@ -58,13 +61,37 @@ const AdminUserDetails = ({ user, onBack }) => {
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            <div className="flex items-center gap-4">
-                <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full transition">
-                    <ArrowLeft className="text-slate-600 dark:text-slate-300" />
-                </button>
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{user.name}</h2>
-                    <p className="text-slate-500 dark:text-neutral-400 text-sm">{user.role} • {user.email}</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full transition">
+                        <ArrowLeft className="text-slate-600 dark:text-slate-300" />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{user.name}</h2>
+                        <p className="text-slate-500 dark:text-neutral-400 text-sm">{user.role} • {user.email}</p>
+                    </div>
+                </div>
+
+                {/* CARD DE SALDO EM DESTAQUE */}
+                <div className="flex gap-4">
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-xl flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 rounded-lg text-emerald-600 dark:text-emerald-300">
+                            <Clock size={20}/>
+                        </div>
+                        <div>
+                            <div className="text-xs text-slate-500 dark:text-neutral-400 font-bold uppercase">Saldo Atual</div>
+                            <div className="text-xl font-bold text-slate-800 dark:text-white">{currentBalance}h</div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 px-4 py-2 rounded-xl flex items-center gap-3">
+                        <div className="p-2 bg-slate-200 dark:bg-neutral-800 rounded-lg text-slate-600 dark:text-slate-400">
+                            <Trophy size={20}/>
+                        </div>
+                        <div>
+                            <div className="text-xs text-slate-500 dark:text-neutral-400 font-bold uppercase">Pontos</div>
+                            <div className="text-xl font-bold text-slate-800 dark:text-white">{user.points}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -80,10 +107,7 @@ const AdminUserDetails = ({ user, onBack }) => {
                             <div className="flex-1">
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Quantidade</label>
                                 <input 
-                                    type="number" 
-                                    step="0.5"
-                                    className="theme-input" 
-                                    placeholder="Ex: 1 ou -1"
+                                    type="number" step="0.5" className="theme-input" placeholder="Ex: 1 ou -1"
                                     value={amount} onChange={e=>setAmount(e.target.value)} 
                                 />
                             </div>
@@ -96,7 +120,6 @@ const AdminUserDetails = ({ user, onBack }) => {
                             </div>
                         </div>
                         
-                        {/* Feedback */}
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                             Isso ajustará: <b>{unit === 'days' ? amount * 8 : amount} horas</b> no saldo.
                             <br/>(Use negativos para remover).
@@ -104,9 +127,7 @@ const AdminUserDetails = ({ user, onBack }) => {
 
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Motivo (Obrigatório)</label>
-                            <input className="theme-input" 
-                                placeholder="Ex: Compensação..."
-                                value={reason} onChange={e=>setReason(e.target.value)} />
+                            <input className="theme-input" placeholder="Ex: Compensação..." value={reason} onChange={e=>setReason(e.target.value)} />
                         </div>
                         <button disabled={loading} className="btn-primary w-full justify-center">
                             {loading ? "Processando..." : "Aplicar Ajuste"}
@@ -126,7 +147,7 @@ const AdminUserDetails = ({ user, onBack }) => {
                                 <div>
                                     <div className="font-bold text-slate-700 dark:text-emerald-100">
                                         {h.type === 'concessao' ? '+ Crédito' : '- Folga'} 
-                                        <span className="ml-1">({h.hours}h / {(h.hours/8).toFixed(1)}d)</span>
+                                        <span className="ml-1 text-sm">({h.hours}h)</span>
                                     </div>
                                     <div className="text-xs text-slate-500">{h.reason}</div>
                                     <div className="text-[10px] text-slate-400">{new Date(h.created_at).toLocaleDateString()}</div>

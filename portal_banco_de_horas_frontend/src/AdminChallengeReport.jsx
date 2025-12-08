@@ -17,7 +17,7 @@ const AdminChallengeReport = () => {
                             <tr key={d.id} className="theme-table-row">
                                 <td className="theme-table-cell">{d.profiles?.name}</td>
                                 <td className="theme-table-cell">{d.challenges?.title}</td>
-                                <td className="theme-table-cell"><span className={`tag tag-${d.status==='validado'?'success':d.status==='enviado'?'pending':'default'}`}>{d.status}</span></td>
+                                <td className="theme-table-cell"><span className="tag tag-default">{d.status}</span></td>
                                 <td className="theme-table-cell">{new Date(d.created_at).toLocaleDateString()}</td>
                                 <td className="theme-table-cell">{d.proof_url ? <a href={d.proof_url} target="_blank" className="text-blue-500 hover:underline">Ver Link</a> : '-'}</td>
                             </tr>

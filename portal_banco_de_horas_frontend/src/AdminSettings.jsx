@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Trash2, Plus } from "lucide-react";
 import { admin, getPublicRoles } from './api';
 
+// Componentes UI simples para evitar dependências circulares
+const Card = ({ children }) => <div className="theme-card">{children}</div>;
+
 const AdminSettings = () => {
     const [rate, setRate] = useState(0);
     const [roles, setRoles] = useState([]);
@@ -38,9 +41,8 @@ const AdminSettings = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in">
-            
             {/* Configuração da Taxa */}
-            <div className="theme-card mt-4">
+            <Card>
                 <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white flex gap-2">
                     <Settings className="text-emerald-600"/> Configuração Global
                 </h2>
@@ -51,10 +53,10 @@ const AdminSettings = () => {
                     </div>
                     <button onClick={saveRate} className="btn-primary">Salvar Taxa</button>
                 </div>
-            </div>
+            </Card>
 
             {/* Gestão de Cargos */}
-            <div className="theme-card">
+            <Card>
                 <h2 className="text-lg font-bold mb-4 text-slate-800 dark:text-white flex gap-2">
                     Cargos & Funções
                 </h2>
@@ -72,7 +74,7 @@ const AdminSettings = () => {
                         </div>
                     ))}
                 </div>
-            </div>
+            </Card>
         </div>
     );
 };

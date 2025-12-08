@@ -1,6 +1,8 @@
+// src/api.js
 import axios from 'axios';
 
-const API_URL = 'https://portal-backend-dtf6.onrender.com';
+// Verifique se esta porta está correta para o seu teste local
+const API_URL = 'https://portal-backend-dtf6.onrender.com'; 
 const TOKEN_KEY = 'auth_token_14reg';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -29,9 +31,8 @@ export const user = {
   createRequest: (type, hours, reason) => api.post('/me/requests', { type, hours, reason }),
   convertPoints: (hours) => api.post('/me/convert', { hours }),
   getParticipations: () => api.get('/me/participations'),
-  
-  // --- AQUI ESTÁ A CHAVE DO PROBLEMA ---
   getSettings: () => api.get('/me/settings'),
+  updatePassword: (password) => api.put('/me/password', { password }),
 };
 
 export const challenge = {
