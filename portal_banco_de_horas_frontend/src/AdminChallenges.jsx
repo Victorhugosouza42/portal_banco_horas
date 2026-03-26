@@ -1,208 +1,157 @@
 // src/AdminChallenges.jsx
 import React, { useState, useEffect } from 'react';
-import { Swords, Trash2, Plus, Users, X, Trophy, Calendar, Target } from "lucide-react";
-import { admin, challenge as challengeApi } from './api';
+import { Swords, Plus, Trash2, X, Users, ArrowLeft } from "lucide-react";
+import { admin, challenge, getPublicRoles } from './api'; // Importar getPublicRoles
 
 const AdminChallenges = () => {
-  const [challenges, setChallenges] = useState([]);
+  const [form, setForm] = useState({ title: "", description: "", points: 10, allowed_roles: [], due_at: "" });
+  const [existingChallenges, setExistingChallenges] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]); // Cargos vindos do DB
   const [participations, setParticipations] = useState([]);
+  const [viewMembersOf, setViewMembersOf] = useState(null);
   const [loading, setLoading] = useState(false);
-  
-  // Estado para o Modal de Participantes
-  const [selectedChallenge, setSelectedChallenge] = useState(null);
-
-  // Formulário de Novo Desafio
-  const [form, setForm] = useState({ title: "", description: "", points: 10, audience: "Todos", due_at: "" });
 
   const fetchData = async () => {
-    try {
-      // Buscamos os desafios e TODAS as participações para cruzar os dados
-      const [cRes, pRes] = await Promise.all([
-        challengeApi.getAll(),
-        admin.getAllParticipations()
-      ]);
-      setChallenges(cRes.data);
-      setParticipations(pRes.data);
-    } catch (e) {
-      console.error(e);
-    }
+      try {
+          const [cRes, rRes, pRes] = await Promise.all([challenge.getAll(), getPublicRoles(), admin.getAllParticipations()]);
+          setExistingChallenges(cRes.data);
+          setAvailableRoles(rRes.data);
+          setParticipations(pRes.data);
+      } catch (e) { console.error(e); }
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleDelete = async (id) => {
-    if (!confirm("Tem a certeza? Isso apagará o histórico deste desafio.")) return;
-    try {
-      await admin.deleteChallenge(id);
-      fetchData();
-    } catch (e) { alert("Erro ao apagar."); }
+  const addRole = (role) => {
+    if (!role) return;
+    if (!form.allowed_roles.includes(role)) setForm({ ...form, allowed_roles: [...form.allowed_roles, role] });
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (!form.title) return alert("Preencha o título.");
-    setLoading(true);
+  const removeRole = (r) => setForm({ ...form, allowed_roles: form.allowed_roles.filter(x => x !== r) });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setLoading(true);
     try {
-      await admin.createChallenge(form);
-      setForm({ title: "", description: "", points: 10, audience: "Todos", due_at: "" });
-      fetchData();
-    } catch (e) { alert("Erro ao criar."); }
-    finally { setLoading(false); }
+      const payload = { ...form, points: +form.points, allowed_roles: form.allowed_roles, due_at: form.due_at || null };
+      await admin.createChallenge(payload); alert("Criado!"); setForm({ title: "", description: "", points: 10, allowed_roles: [], due_at: "" }); fetchData();
+    } catch (err) { alert("Erro."); } finally { setLoading(false); }
   };
 
-  // Filtra participantes do desafio selecionado
-  const getChallengeParticipants = (challengeId) => {
-    return participations.filter(p => p.challenge_id === challengeId);
-  };
+  const handleDelete = async (id) => { if(confirm("Excluir?")) { await admin.deleteChallenge(id); fetchData(); } };
+
+  if (viewMembersOf) {
+      const parts = participations.filter(p => p.challenge_id === viewMembersOf.id);
+      return (
+        <div className="space-y-6 animate-in fade-in duration-500 mt-4">
+            <button onClick={() => setViewMembersOf(null)} className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-bold mb-2 transition-colors">
+               <ArrowLeft size={18}/> Voltar aos Desafios
+            </button>
+            <div className="theme-card">
+               <div className="flex items-center gap-2 mb-4">
+                  <Users className="text-emerald-600 dark:text-emerald-400" />
+                  <h2 className="text-emerald-900 dark:text-emerald-100 font-semibold text-lg">Inscritos em: <span className="text-slate-500 font-normal">{viewMembersOf.title}</span></h2>
+               </div>
+               <div className="overflow-x-auto">
+                   <table className="w-full text-left">
+                       <thead><tr><th className="theme-table-head">Servidor</th><th className="theme-table-head">Data Inscrição</th><th className="theme-table-head">Status</th></tr></thead>
+                       <tbody>
+                           {parts.length === 0 ? <tr><td colSpan="3" className="text-center text-slate-400 py-4">Nenhum inscrito.</td></tr> : null}
+                           {parts.map(p => {
+                               const statusColors = {
+                                   'inscrito': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+                                   'enviado': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+                                   'validado': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+                                   'recusado': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                               };
+                               const colorClass = statusColors[p.status] || statusColors['inscrito'];
+                               return (
+                                   <tr key={p.id} className="theme-table-row">
+                                       <td className="theme-table-cell font-bold">{p.profiles?.name || 'Desconhecido'}</td>
+                                       <td className="theme-table-cell">{new Date(p.created_at).toLocaleDateString()}</td>
+                                       <td className="theme-table-cell"><span className={`px-2 py-1 rounded text-xs font-bold uppercase ${colorClass}`}>{p.status}</span></td>
+                                   </tr>
+                               );
+                           })}
+                       </tbody>
+                   </table>
+               </div>
+            </div>
+        </div>
+      );
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      
-      {/* 1. Formulário de Criação */}
-      <div className="theme-card">
-        <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-white flex gap-2">
-            <Plus className="text-emerald-600"/> Novo Desafio
-        </h3>
-        <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2 items-end">
-            <div className="md:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Título</label>
-                <input className="theme-input" value={form.title} onChange={e=>setForm({...form, title:e.target.value})} placeholder="Ex: Doar Sangue..." />
+    <div className="space-y-6">
+        <div className="theme-card mt-4">
+            <div className="flex items-center gap-2 mb-4">
+                <Swords className="text-emerald-600 dark:text-emerald-400" />
+                <h2 className="text-emerald-900 dark:text-emerald-100 font-semibold text-lg">Criar Novo Desafio</h2>
             </div>
-            <div className="md:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Descrição</label>
-                <textarea className="theme-input" rows="2" value={form.description} onChange={e=>setForm({...form, description:e.target.value})} placeholder="Detalhes do desafio..." />
-            </div>
-            <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Pontos</label>
-                <input type="number" className="theme-input" value={form.points} onChange={e=>setForm({...form, points:e.target.value})} />
-            </div>
-            <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Público Alvo</label>
-                <select className="theme-input" value={form.audience} onChange={e=>setForm({...form, audience:e.target.value})}>
-                    <option>Todos</option>
-                    <option>Analista</option>
-                    <option>Técnico</option>
-                    <option>Estagiário</option>
-                </select>
-            </div>
-            <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Prazo (Opcional)</label>
-                <input type="date" className="theme-input" value={form.due_at} onChange={e=>setForm({...form, due_at:e.target.value})} />
-            </div>
-            <button disabled={loading} className="btn-primary flex justify-center items-center gap-2 h-[42px]">
-                <Swords size={18}/> Criar Desafio
-            </button>
-        </form>
-      </div>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Título</label><input placeholder="Ex: Organização" required className="theme-input" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Pontos</label><input type="number" placeholder="10" required className="theme-input" value={form.points} onChange={e=>setForm({...form, points: e.target.value})} /></div>
+                </div>
+                <div><label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Descrição</label><textarea placeholder="Detalhes..." required className="theme-input h-24 resize-none" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} /></div>
 
-      {/* 2. Lista de Desafios */}
-      <div className="theme-card">
-        <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-white flex gap-2">
-            <Trophy className="text-amber-500"/> Desafios Ativos
-        </h3>
-        <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr>
-                        <th className="theme-table-head">Título</th>
-                        <th className="theme-table-head">Pontos</th>
-                        <th className="theme-table-head">Prazo</th>
-                        <th className="theme-table-head">Público</th>
-                        <th className="theme-table-head text-center">Inscritos</th>
-                        <th className="theme-table-head text-right">Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {challenges.map(c => {
-                        const count = getChallengeParticipants(c.id).length;
-                        return (
-                            <tr key={c.id} className="theme-table-row">
-                                <td className="theme-table-cell font-medium">{c.title}</td>
-                                <td className="theme-table-cell font-bold text-emerald-600">{c.points} pts</td>
-                                <td className="theme-table-cell text-xs text-slate-500">
-                                    {c.due_at ? new Date(c.due_at).toLocaleDateString() : '-'}
-                                </td>
-                                <td className="theme-table-cell"><span className="tag tag-default">{c.audience}</span></td>
-                                
-                                {/* COLUNA NOVA: Botão de Participantes */}
-                                <td className="theme-table-cell text-center">
-                                    <button 
-                                        onClick={() => setSelectedChallenge(c)}
-                                        className="hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 mx-auto transition-colors"
-                                    >
-                                        <Users size={14}/> {count}
-                                    </button>
-                                </td>
-
-                                <td className="theme-table-cell text-right">
-                                    <button onClick={()=>handleDelete(c.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-colors">
-                                        <Trash2 size={16}/>
-                                    </button>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                    {challenges.length === 0 && (
-                        <tr><td colSpan="6" className="text-center py-8 text-slate-400">Nenhum desafio criado.</td></tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
-      </div>
-
-      {/* 3. MODAL DE PARTICIPANTES */}
-      {selectedChallenge && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-emerald-900 overflow-hidden flex flex-col max-h-[80vh]">
-                
-                {/* Header do Modal */}
-                <div className="p-4 border-b border-slate-100 dark:border-emerald-900/30 flex justify-between items-center bg-slate-50 dark:bg-neutral-950">
+                <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                        <h4 className="font-bold text-slate-800 dark:text-white">Inscritos</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[250px]">{selectedChallenge.title}</p>
-                    </div>
-                    <button onClick={() => setSelectedChallenge(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded-full text-slate-500">
-                        <X size={18} />
-                    </button>
-                </div>
-
-                {/* Lista de Pessoas */}
-                <div className="p-4 overflow-y-auto space-y-2">
-                    {getChallengeParticipants(selectedChallenge.id).length === 0 ? (
-                        <div className="text-center py-8 text-slate-400 flex flex-col items-center gap-2">
-                            <Users size={32} opacity={0.5}/>
-                            <p>Ninguém se inscreveu ainda.</p>
+                        <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Público Alvo</label>
+                        <select className="theme-input w-full cursor-pointer mb-2" value="" onChange={(e) => addRole(e.target.value)}>
+                            <option value="" disabled>Adicionar Cargo...</option>
+                            {availableRoles.map(role => <option key={role.id} value={role.name}>{role.name}</option>)}
+                        </select>
+                        <div className="flex flex-wrap gap-2 min-h-[30px]">
+                            {form.allowed_roles.length === 0 && <span className="text-xs text-slate-400 italic py-1">Todos podem ver</span>}
+                            {form.allowed_roles.map(role => (
+                                <span key={role} className="flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-md border border-emerald-200 dark:border-emerald-800">
+                                    {role} <button type="button" onClick={() => removeRole(role)} className="hover:text-red-500"><X size={14} /></button>
+                                </span>
+                            ))}
                         </div>
-                    ) : (
-                        getChallengeParticipants(selectedChallenge.id).map(p => (
-                            <div key={p.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-neutral-950/50 rounded-lg border border-slate-100 dark:border-emerald-900/20">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-xs">
-                                        {p.profiles?.name?.charAt(0).toUpperCase() || '?'}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-sm text-slate-700 dark:text-emerald-100">{p.profiles?.name || 'Usuário'}</div>
-                                        <div className="text-[10px] text-slate-400">{new Date(p.created_at).toLocaleDateString()}</div>
-                                    </div>
-                                </div>
-                                
-                                {/* Status do Participante */}
-                                <div>
-                                    {p.status === 'inscrito' && <span className="tag bg-slate-200 text-slate-600">Inscrito</span>}
-                                    {p.status === 'enviado' && <span className="tag bg-amber-100 text-amber-700">Aguardando</span>}
-                                    {p.status === 'validado' && <span className="tag tag-success">Concluído</span>}
-                                    {p.status === 'rejeitado' && <span className="tag tag-danger">Recusado</span>}
-                                </div>
-                            </div>
-                        ))
-                    )}
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Prazo (Opcional)</label>
+                        <input type="datetime-local" className="theme-input" value={form.due_at} onChange={e=>setForm({...form, due_at: e.target.value})} />
+                    </div>
                 </div>
+                <button disabled={loading} className="btn-primary w-full justify-center mt-4"><Plus size={18}/> {loading ? "..." : "Lançar"}</button>
+            </form>
+        </div>
+
+        <div className="theme-card">
+            <h3 className="text-emerald-900 dark:text-emerald-100 font-semibold mb-4">Desafios em Andamento</h3>
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead><tr><th className="theme-table-head">Título</th><th className="theme-table-head">Pontos</th><th className="theme-table-head">Prazo</th><th className="theme-table-head">Público</th><th className="theme-table-head">Inscritos</th><th className="theme-table-head">Ação</th></tr></thead>
+                    <tbody>
+                        {existingChallenges.map(c => (
+                            <tr key={c.id} className="theme-table-row">
+                                <td className="theme-table-cell font-bold">{c.title}</td>
+                                <td className="theme-table-cell">{c.points}</td>
+                                <td className="theme-table-cell">{c.due_at ? new Date(c.due_at).toLocaleDateString() : '-'}</td>
+                                <td className="theme-table-cell text-xs">{c.allowed_roles?.join(', ') || 'Todos'}</td>
+                                <td className="theme-table-cell">
+                                    {(() => {
+                                        const pCount = participations.filter(p => p.challenge_id === c.id).length;
+                                        return pCount > 0 ? (
+                                            <button onClick={() => setViewMembersOf(c)} className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1">
+                                                <Users size={14}/> {pCount} inscrito(s)
+                                            </button>
+                                        ) : (
+                                            <span className="text-slate-400 text-sm">0 inscritos</span>
+                                        );
+                                    })()}
+                                </td>
+                                <td className="theme-table-cell"><button onClick={() => handleDelete(c.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"><Trash2 size={16} /></button></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
-      )}
-
     </div>
   );
 };
-
 export default AdminChallenges;

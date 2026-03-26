@@ -1,17 +1,22 @@
 // src/Dashboard.jsx
-// (Versão Final 1.3: Correção Tela Branca + Aba "Meu Painel" restaurada)
 
 import React, { useState, useEffect } from 'react';
-import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3, User, Lock, Briefcase } from "lucide-react";
+// 1. Adicionámos o ícone Plane (Avião) aqui:
+import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3, User, Lock, Plane, UserPlus } from "lucide-react";
 import { user, admin } from './api.js';
 
-// Componentes Filhos
+// Componentes Filhos Existentes
 import ChallengesManager from './ChallengesManager.jsx'; 
 import AdminValidation from './AdminValidation.jsx'; 
 import AdminUsers from './AdminUsers.jsx';
 import AdminChallenges from './AdminChallenges.jsx';
 import AdminChallengeReport from './AdminChallengeReport.jsx';
 import AdminSettings from './AdminSettings.jsx';
+import AdminUserCreate from './AdminUserCreate.jsx';
+
+// 2. Importamos os nossos novos componentes de Férias
+import FeriasCard from './FeriasCard.jsx'; // Verifique se a pasta está correta
+import AdminFerias from './AdminFerias.jsx';
 
 // --- UI Components ---
 const Card = ({ children, className="" }) => <div className={`theme-card ${className}`}>{children}</div>;
@@ -71,13 +76,14 @@ function UserProfileCard({ currentUser }) {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (newPassword.length < 6) return alert("A senha deve ter pelo menos 6 caracteres.");
+    
     setLoading(true);
     try {
       await user.updatePassword(newPassword); 
       alert("Senha atualizada com sucesso!");
       setNewPassword("");
     } catch (e) {
-      alert("Erro ao atualizar senha. Tente novamente.");
+      alert("Erro ao atualizar senha.");
     } finally {
       setLoading(false);
     }
@@ -91,14 +97,21 @@ function UserProfileCard({ currentUser }) {
       <div className="flex flex-col gap-4">
         <div className="text-sm">
           <p className="text-slate-500 dark:text-neutral-400 text-xs uppercase font-bold mb-1">Email Cadastrado</p>
-          <div className="font-medium text-slate-800 dark:text-emerald-100 bg-slate-50 dark:bg-neutral-950 p-2 rounded border border-slate-200 dark:border-emerald-900/30 truncate">
+          <div className="font-medium text-slate-800 dark:text-emerald-100 bg-slate-50 dark:bg-neutral-950 p-2 rounded border border-slate-200 dark:border-emerald-900/30">
              {currentUser.email}
           </div>
         </div>
+
         <form onSubmit={handlePasswordChange} className="pt-2">
            <label className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1 block">Alterar Senha</label>
            <div className="flex gap-2">
-             <input type="password" className="theme-input" placeholder="Nova senha..." value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+             <input 
+               type="password" 
+               className="theme-input" 
+               placeholder="Nova senha..."
+               value={newPassword}
+               onChange={(e) => setNewPassword(e.target.value)}
+             />
              <Button type="submit" disabled={loading || !newPassword} variant="primary" className="!px-3">
                <Lock size={16}/>
              </Button>
@@ -177,6 +190,9 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
         </div>
 
         <div className="flex flex-col gap-6">
+            {/* 3. Aqui está o nosso novo Card de Férias! */}
+            <FeriasCard userId={currentUser.id} />
+
             <UserProfileCard currentUser={currentUser} />
 
             <Card className="h-fit">
@@ -204,7 +220,6 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
 }
 
 // --- Admin Content ---
-// Agora recebe currentUser e fetchProfile para passar à aba "Meu Painel"
 function AdminDashboardContent({ currentUser, fetchProfile }) {
   const [activeTab, setActiveTab] = useState(localStorage.getItem('adminTab') || "requests");
   const [requests, setRequests] = useState([]);
@@ -222,11 +237,12 @@ function AdminDashboardContent({ currentUser, fetchProfile }) {
         {[
             {id: 'requests', label: 'Pedidos & Validação', icon: Clock},
             {id: 'users', label: 'Usuários', icon: Users},
-            {id: 'challenges', label: 'Desafios', icon: Swords},
-            {id: 'reports', label: 'Relatórios', icon: BarChart3},
+            {id: 'ferias', label: 'Férias', icon: Plane},
             {id: 'config', label: 'Configurações', icon: Settings},
-            // AQUI ESTÁ A ABA RESTAURADA:
-            {id: 'personal', label: 'Meu Painel', icon: Briefcase},
+            {id: 'meu_painel', label: 'Meu Painel', icon: User},
+            {id: 'create_user', label: 'Cadastrar Usuários', icon: UserPlus},
+            {id: 'reports', label: 'Relatórios', icon: BarChart3},
+            {id: 'challenges', label: 'Desafios', icon: Swords},
         ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2.5 rounded-t-lg flex items-center gap-2 text-sm font-bold transition-all duration-300 ${
@@ -280,21 +296,19 @@ function AdminDashboardContent({ currentUser, fetchProfile }) {
             <AdminValidation />
         </div>
       )}
+      {activeTab === 'create_user' && <AdminUserCreate />}
+      {activeTab === 'meu_painel' && <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />}
+      {activeTab === 'ferias' && <AdminFerias />}
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'challenges' && <AdminChallenges />}
       {activeTab === 'reports' && <AdminChallengeReport />}
       {activeTab === 'config' && <AdminSettings />}
-
-      {/* RENDERIZA MEU PAINEL QUANDO SELECIONADO */}
-      {activeTab === 'personal' && (
-        <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />
-      )}
     </>
   );
 }
 
 // --- APP CONTAINER ---
-const Dashboard = ({ Page, currentUser, isAdmin, onLogout, fetchProfile }) => {
+const Dashboard = ({ currentUser, isAdmin, onLogout, fetchProfile }) => {
   if (!currentUser) {
     return (
       <div className="min-h-screen grid place-items-center bg-emerald-50 dark:bg-[#0b1f17] text-slate-500">
@@ -302,10 +316,11 @@ const Dashboard = ({ Page, currentUser, isAdmin, onLogout, fetchProfile }) => {
       </div>
     );
   }
+
   const days = (currentUser.hours / 8).toFixed(2);
 
   return (
-    <> {/* Fragmento para substituir o Page em falta */}
+    <>
       <Header user={currentUser} onLogout={onLogout} />
       
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -317,11 +332,7 @@ const Dashboard = ({ Page, currentUser, isAdmin, onLogout, fetchProfile }) => {
         }
       </div>
 
-      {isAdmin 
-        // Passamos as props para o AdminDashboard também
-        ? <AdminDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} /> 
-        : <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />
-      }
+      {isAdmin ? <AdminDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} /> : <UserDashboardContent currentUser={currentUser} fetchProfile={fetchProfile} />}
     </>
   );
 };

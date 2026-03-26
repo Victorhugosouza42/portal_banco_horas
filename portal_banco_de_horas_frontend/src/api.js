@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Verifique se esta porta está correta para o seu teste local
-const API_URL = 'https://portal-backend-dtf6.onrender.com'; 
+const API_URL = 'http://127.0.0.1:8000'; 
 const TOKEN_KEY = 'auth_token_14reg';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -23,6 +23,17 @@ api.interceptors.request.use(config => {
 export const auth = {
   login: (email, password) => api.post('/login', { email, password }),
   signup: (name, role, email, password) => api.post('/signup', { name, role, email, password }),
+};
+
+export const ferias = {
+  // Puxa o saldo do utilizador (Leitura)
+  getSaldo: (userId) => api.get(`/ferias/meu-saldo/${userId}`),
+  
+  // Rotas do Admin
+  ajustarSaldo: (dados) => api.post('/ferias/admin/ajustar-saldo', dados),
+  registrarHistorico: (dados) => api.post('/ferias/admin/historico', dados),
+  getRelatorio: () => api.get('/ferias/admin/relatorio'),
+  deleteHistorico: (id) => api.delete(`/ferias/admin/historico/${id}`),
 };
 
 export const user = {

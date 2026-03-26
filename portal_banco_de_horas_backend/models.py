@@ -68,3 +68,6 @@ class Config: from_attributes = True
 class AdminSettingsUpdate(BaseModel): points_per_hour: int = Field(gt=0)
 class AdminRequestDetails(RequestResponse): profiles: Optional[Profile] = None
 class AdminParticipantDetails(ParticipantResponse): profiles: Optional[Profile] = None; challenges: Optional[Challenge] = None
+
+class AdminUserListResponse(Profile):
+    vacation_days: int = 0

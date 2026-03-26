@@ -7,11 +7,13 @@ from pydantic import BaseModel
 from supabase_client import supabase
 from zoneinfo import ZoneInfo 
 
+
 # Importações
 from models import * 
 from gotrue.errors import AuthApiError
 import auth 
 from gotrue.types import User as AuthUser
+import ferias
 
 app = FastAPI(
     title="Portal Banco de Horas API",
@@ -255,10 +257,21 @@ def admin_get_pending_validations():
 def admin_validate_participation(pid: UUID, validation_data: AdminParticipantValidation):
     supabase.rpc('validate_participation', {'p_participant_id': str(pid), 'p_approved': validation_data.approved}).execute()
 
-@admin_router.get("/users", response_model=List[Profile])
+@admin_router.get("/users", response_model=List[AdminUserListResponse])
 def admin_list_users():
-    res = supabase.table('profiles').select('*').order('name', desc=False).execute()
-    return [Profile.model_validate(i) for i in res.data]
+    res = supabase.table('profiles').select('*, vacation_balances(days)').order('name', desc=False).execute()
+    users = []
+    for i in res.data:
+        vac_bal = i.get('vacation_balances')
+        days = 0
+        if vac_bal:
+            if isinstance(vac_bal, list) and len(vac_bal) > 0:
+                days = vac_bal[0].get('days', 0)
+            elif isinstance(vac_bal, dict):
+                days = vac_bal.get('days', 0)
+        i['vacation_days'] = days
+        users.append(AdminUserListResponse.model_validate(i))
+    return users
 
 @admin_router.put("/users/{uid}", response_model=Profile)
 def admin_update_user(uid: UUID, user_data: AdminUserUpdate):
@@ -290,3 +303,4 @@ def delete_role(rid: UUID):
     return {"message": "Cargo apagado."}
 
 app.include_router(admin_router)
+app.include_router(ferias.router)
