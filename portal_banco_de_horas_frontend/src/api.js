@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Verifique se esta porta está correta para o seu teste local
-const API_URL = 'http://127.0.0.1:8000'; 
+const API_URL = 'https://portal-backend-dtf6.onrender.com'; 
 const TOKEN_KEY = 'auth_token_14reg';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
