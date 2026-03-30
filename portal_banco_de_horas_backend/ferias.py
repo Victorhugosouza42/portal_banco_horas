@@ -1,114 +1,81 @@
 # ferias.py
+import re
 from fastapi import APIRouter
 from pydantic import BaseModel
-from supabase_client import supabase # O nosso arquivo de conexão com o banco
+from supabase_client import supabase
 from datetime import date
 from typing import Optional
 
-# Criamos um "roteador" para agrupar todas as rotas relacionadas a férias
-router = APIRouter(prefix="/ferias", tags=["Férias"])
+router = APIRouter(prefix="/ferias", tags=["Ferias"])
 
-# ==========================================
-# 1. MODELOS DE DADOS (Validação)
-# ==========================================
-
-# Como o Admin vai enviar o ajuste de saldo
 class AjusteSaldo(BaseModel):
     user_id: str
-    dias: int # Pode ser um número positivo (ex: 5) ou negativo (ex: -2)
+    tipo: str
+    dias: int
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
-# Como o Admin vai enviar o registo de um período de férias
 class NovaFerias(BaseModel):
     user_id: str
     start_date: date
     end_date: date
-    notes: Optional[str] = None # Observação opcional
-
-# ==========================================
-# 2. ROTAS DO UTILIZADOR (Estritamente Leitura)
-# ==========================================
+    notes: Optional[str] = None
 
 @router.get("/meu-saldo/{user_id}")
 def obter_saldo_usuario(user_id: str):
-    """
-    Devolve apenas o saldo atual do servidor. 
-    Não faz alterações no banco de dados.
-    """
-    resposta = supabase.table("vacation_balances").select("days").eq("user_id", user_id).execute()
-    
-    # Se o utilizador já tiver um registo, devolvemos os dias. Se não, devolvemos 0.
-    if len(resposta.data) > 0:
-        return {"dias": resposta.data[0]["days"]}
-    else:
-        return {"dias": 0}
-
-# ==========================================
-# 3. ROTAS DO ADMINISTRADOR (Leitura e Escrita)
-# ==========================================
+    r = supabase.table("vacation_balances").select("days").eq("user_id", user_id).execute()
+    return {"dias": r.data[0]["days"] if r.data else 0}
 
 @router.post("/admin/ajustar-saldo")
 def ajustar_saldo_admin(dados: AjusteSaldo):
-    """
-    O Admin adiciona ou remove dias do saldo do funcionário.
-    """
-    # Passo A: Descobrir quantos dias o funcionário já tem hoje
-    resposta = supabase.table("vacation_balances").select("days").eq("user_id", dados.user_id).execute()
-    
-    saldo_atual = 0
-    if len(resposta.data) > 0:
-        saldo_atual = resposta.data[0]["days"]
-        
-    # Passo B: Calcular o novo saldo
-    novo_saldo = saldo_atual + dados.dias
-    
-    # Passo C: Guardar o novo saldo no banco (upsert = atualiza se existir, cria se não existir)
-    supabase.table("vacation_balances").upsert({
-        "user_id": dados.user_id,
-        "days": novo_saldo
-    }).execute()
-    
-    # Passo D: Criar um registro no histórico
+    r = supabase.table("vacation_balances").select("days").eq("user_id", dados.user_id).execute()
+    saldo_atual = r.data[0]["days"] if r.data else 0
     hoje = date.today().isoformat()
-    nota = f"AJUSTE MANUAL DE SALDO: {dados.dias} dias" if dados.dias >= 0 else f"AJUSTE MANUAL DE SALDO: {dados.dias} dias"
-    
-    supabase.table("vacation_history").insert({
-        "user_id": dados.user_id,
-        "start_date": hoje,
-        "end_date": hoje,
-        "notes": nota
-    }).execute()
-    
-    return {"mensagem": "Saldo atualizado com sucesso!", "novo_saldo": novo_saldo}
+
+    if dados.tipo == 'concessao':
+        ajuste   = dados.dias
+        nota     = f"CONCESSAO: +{dados.dias} dias"
+        d_inicio = hoje
+        d_fim    = hoje
+    else:
+        ajuste   = -dados.dias
+        nota     = f"GOZO: -{dados.dias} dias"
+        d_inicio = dados.start_date.isoformat() if dados.start_date else hoje
+        d_fim    = dados.end_date.isoformat()   if dados.end_date   else hoje
+
+    supabase.table("vacation_balances").upsert({"user_id": dados.user_id, "days": saldo_atual + ajuste}).execute()
+    supabase.table("vacation_history").insert({"user_id": dados.user_id, "start_date": d_inicio, "end_date": d_fim, "notes": nota}).execute()
+    return {"mensagem": "OK", "novo_saldo": saldo_atual + ajuste}
 
 @router.post("/admin/historico")
 def registrar_periodo_ferias(dados: NovaFerias):
-    """
-    O Admin regista no histórico que o funcionário vai tirar férias.
-    """
-    supabase.table("vacation_history").insert({
-        "user_id": dados.user_id,
-        "start_date": dados.start_date.isoformat(),
-        "end_date": dados.end_date.isoformat(),
-        "notes": dados.notes
-    }).execute()
-    
-    return {"mensagem": "Período de férias registado com sucesso!"}
+    supabase.table("vacation_history").insert({"user_id": dados.user_id, "start_date": dados.start_date.isoformat(), "end_date": dados.end_date.isoformat(), "notes": dados.notes}).execute()
+    return {"mensagem": "OK"}
 
 @router.get("/admin/relatorio")
 def obter_relatorio_ferias():
-    """
-    Gera o relatório com todos os períodos de férias agendados ou tirados.
-    Puxa também o nome do perfil do utilizador.
-    """
-    # A magia do Supabase: com "profiles(name)", ele já traz o nome do funcionário junto!
-    resposta = supabase.table("vacation_history").select("*, profiles(name)").order("start_date", desc=True).execute()
-    return resposta.data
+    r = supabase.table("vacation_history").select("*, profiles(name)").order("start_date", desc=True).execute()
+    return r.data
 
 @router.delete("/admin/historico/{id}")
 def excluir_registro_ferias(id: str):
-    """
-    Exclui um registro do histórico de férias pelo ID.
-    O saldo de dias NÃO é alterado automaticamente, se necessário, o admin deve corrigir manualmente.
-    """
+    res = supabase.table("vacation_history").select("*").eq("id", id).execute()
+    if not res.data:
+        return {"mensagem": "Nao encontrado."}
+
+    record  = res.data[0]
+    notes   = record.get("notes") or ""
+    user_id = record["user_id"]
+
+    match = re.search(r'([+-]?\d+)\s*dias', notes)
+    if match:
+        try:
+            dias = int(match.group(1))
+            bal  = supabase.table("vacation_balances").select("days").eq("user_id", user_id).execute()
+            saldo_atual = bal.data[0]["days"] if bal.data else 0
+            supabase.table("vacation_balances").upsert({"user_id": user_id, "days": saldo_atual - dias}).execute()
+        except Exception as e:
+            print(f"[WARN] reversal failed: {e}")
+
     supabase.table("vacation_history").delete().eq("id", id).execute()
-    return {"mensagem": "Registro excluído com sucesso!"}
+    return {"mensagem": "Excluido e saldo revertido."}

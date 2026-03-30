@@ -1,9 +1,13 @@
 // src/Dashboard.jsx
 
 import React, { useState, useEffect } from 'react';
-// 1. Adicionámos o ícone Plane (Avião) aqui:
-import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3, User, Lock, Plane, UserPlus } from "lucide-react";
+import { Clock, LogOut, Swords, Trophy, Hourglass, Users, FileText, Check, Settings, ShieldCheck, BarChart3, User, Lock, Plane, UserPlus, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { user, admin } from './api.js';
+
+// Auxiliares de filtro
+const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const ANO_ATUAL = new Date().getFullYear();
+const ANOS_LISTA = Array.from({ length: 5 }, (_, i) => ANO_ATUAL - 2 + i);
 
 // Componentes Filhos Existentes
 import ChallengesManager from './ChallengesManager.jsx'; 
@@ -219,10 +223,25 @@ function UserDashboardContent({ currentUser, fetchProfile }) {
   );
 }
 
+// Auxiliar: select transparente para filtros em pill
+const filterSelectCls = "filter-pill-select";
+
+// Constantes de meses (fora do componente para não recriar a cada render)
+const _MESES_OPT = [
+  { value: '', label: 'Todos os meses' },
+  ...MESES_NOMES.map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }))
+];
+
 // --- Admin Content ---
 function AdminDashboardContent({ currentUser, fetchProfile }) {
   const [activeTab, setActiveTab] = useState(localStorage.getItem('adminTab') || "requests");
   const [requests, setRequests] = useState([]);
+
+  // Filtros de Pedidos — padrão: mês vigente, ano atual, todos os status
+  const mesPedAtual = String(new Date().getMonth() + 1).padStart(2, '0');
+  const [filtroMesPed, setFiltroMesPed] = useState(mesPedAtual);
+  const [filtroAnoPed, setFiltroAnoPed] = useState(String(ANO_ATUAL));
+  const [filtroStatusPed, setFiltroStatusPed] = useState('todos');
 
   useEffect(() => { localStorage.setItem('adminTab', activeTab); }, [activeTab]);
 
@@ -230,6 +249,22 @@ function AdminDashboardContent({ currentUser, fetchProfile }) {
   useEffect(() => { fetchData(); }, []);
 
   const handleProcess = async (rid, status) => { try { await admin.processRequest(rid, status); fetchData(); } catch(e) { alert("Erro"); } };
+
+  // Filtragem client-side (mes vazio = ignorar mês)
+  const pedidosFiltrados = requests.filter(r => {
+    const d = new Date(r.created_at);
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const ano = String(d.getFullYear());
+    const mesOk = filtroMesPed === '' || mes === filtroMesPed;
+    const statusOk = filtroStatusPed === 'todos' || r.status === filtroStatusPed;
+    return mesOk && ano === filtroAnoPed && statusOk;
+  });
+
+  const limparFiltrosPed = () => {
+    setFiltroMesPed(mesPedAtual);
+    setFiltroAnoPed(String(ANO_ATUAL));
+    setFiltroStatusPed('todos');
+  };
 
   return (
     <>
@@ -258,7 +293,38 @@ function AdminDashboardContent({ currentUser, fetchProfile }) {
       {activeTab === 'requests' && (
         <div className="space-y-6 animate-in fade-in duration-500">
             <Card>
-                <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-white">Pedidos de Horas</h3>
+                {/* Cabeçalho com filtros — pill estilizada */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">Pedidos de Horas</h3>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                      {pedidosFiltrados.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 shadow-sm">
+                    <SlidersHorizontal size={13} className="text-slate-400 flex-shrink-0" />
+                    <span className="text-xs text-slate-400 font-medium hidden sm:block">Filtrar:</span>
+                    <select className={filterSelectCls} value={filtroMesPed} onChange={e => setFiltroMesPed(e.target.value)}>
+                      {_MESES_OPT.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                    <div className="w-px h-4 bg-slate-200 dark:bg-neutral-700" />
+                    <select className={filterSelectCls} value={filtroAnoPed} onChange={e => setFiltroAnoPed(e.target.value)}>
+                      {ANOS_LISTA.map(a => <option key={a} value={String(a)}>{a}</option>)}
+                    </select>
+                    <div className="w-px h-4 bg-slate-200 dark:bg-neutral-700" />
+                    <select className={filterSelectCls} value={filtroStatusPed} onChange={e => setFiltroStatusPed(e.target.value)}>
+                      <option value="todos">Todos</option>
+                      <option value="pendente">Pendente</option>
+                      <option value="aprovado">Aprovado</option>
+                      <option value="negado">Negado</option>
+                    </select>
+                    <div className="w-px h-4 bg-slate-200 dark:bg-neutral-700 mx-1" />
+                    <button onClick={limparFiltrosPed} title="Limpar filtros" className="flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-500 transition-colors font-medium">
+                      <RotateCcw size={12} /> Hoje
+                    </button>
+                  </div>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
@@ -272,7 +338,11 @@ function AdminDashboardContent({ currentUser, fetchProfile }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {requests.map(r => (
+                            {pedidosFiltrados.length === 0 ? (
+                              <tr><td colSpan="6" className="text-center py-8 text-slate-400 dark:text-neutral-500">
+                                Nenhum pedido encontrado para este filtro.
+                              </td></tr>
+                            ) : pedidosFiltrados.map(r => (
                                 <tr key={r.id} className="theme-table-row transition-colors">
                                     <td className="theme-table-cell font-medium truncate max-w-[150px]" title={r.profiles?.name}>{r.profiles?.name}</td>
                                     <td className="theme-table-cell">{r.type}</td>
